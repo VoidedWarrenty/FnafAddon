@@ -1,0 +1,123 @@
+{
+  "namespace": "server_form",
+
+  "//": "Minimal override: replaces only long_form_dynamic_buttons_panel with a",
+  "//1": "switcher between vanilla stack (for normal forms) and a tile grid (for",
+  "//2": "our breaker panel). Vanilla dialog frame, title bar, and close button",
+  "//3": "are preserved. The switch is title-prefix gated so other addons' forms",
+  "//4": "are unaffected.",
+
+  "long_form_dynamic_buttons_panel": {
+    "type": "panel",
+    "size": ["100% - 4px", "100%c"],
+    "offset": [2, 0],
+    "anchor_from": "top_middle",
+    "anchor_to": "top_middle",
+    "bindings": [
+      { "binding_name": "#title_text" }
+    ],
+    "controls": [
+      {
+        "vanilla_button_stack": {
+          "type": "stack_panel",
+          "size": ["100%", "100%c"],
+          "orientation": "vertical",
+          "factory": {
+            "name": "buttons",
+            "control_ids": {
+              "button": "server_form.dynamic_button",
+              "label": "@server_form.dynamic_label",
+              "header": "@server_form.dynamic_header",
+              "divider": "@settings_common.option_group_section_divider"
+            }
+          },
+          "collection_name": "form_buttons",
+          "bindings": [
+            {
+              "binding_name": "#form_button_contents",
+              "binding_name_override": "#collection_length"
+            },
+            {
+              "binding_type": "view",
+              "source_control_name": "long_form_dynamic_buttons_panel",
+              "source_property_name": "((#title_text - 'FNAFTILE:') = #title_text)",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "tile_grid_wrapper@server_form.fnaf_tile_grid": {
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "long_form_dynamic_buttons_panel",
+              "source_property_name": "(not ((#title_text - 'FNAFTILE:') = #title_text))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "fnaf_tile_grid": {
+    "type": "grid",
+    "size": [208, 130],
+    "anchor_from": "top_middle",
+    "anchor_to": "top_middle",
+    "grid_item_template": "server_form.fnaf_tile_grid_item",
+    "collection_name": "form_buttons",
+    "grid_dimensions": [16, 10],
+    "bindings": [
+      {
+        "binding_name": "#form_button_length",
+        "binding_name_override": "#collection_length"
+      }
+    ]
+  },
+
+  "fnaf_tile_grid_item": {
+    "type": "panel",
+    "size": [13, 13],
+    "controls": [
+      {
+        "tile_button": {
+          "type": "button",
+          "size": [13, 13],
+          "$pressed_button_name": "button.form_button_click",
+          "layer": 3,
+          "bindings": [
+            {
+              "binding_type": "collection_details",
+              "binding_collection_name": "form_buttons"
+            }
+          ],
+          "controls": [
+            {
+              "tile_icon": {
+                "type": "image",
+                "size": [13, 13],
+                "layer": 2,
+                "bindings": [
+                  {
+                    "binding_name": "#form_button_texture",
+                    "binding_name_override": "#texture",
+                    "binding_type": "collection",
+                    "binding_collection_name": "form_buttons"
+                  },
+                  {
+                    "binding_name": "#form_button_texture_file_system",
+                    "binding_name_override": "#texture_file_system",
+                    "binding_type": "collection",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
