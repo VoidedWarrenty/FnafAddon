@@ -1,61 +1,93 @@
 import { world, system } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
-import { FNAF1_ROOMS, roomName } from "./rooms.js";
-import { getBreakerBoxState, setRoomPowered } from "./state.js";
+import {
+  getBreakerBoxState, setRoomPowered,
+  getBreakerBoxSnapshot, setBreakerBoxSnapshot,
+} from "./state.js";
 
-// Open the FNAF 1 breaker box UI for a given block location.
-// Uses ActionFormData so it works out of the box. A JSON-UI overlay with the
-// FNAF map background can be layered on later without changing the script.
+export const BREAKER_BOX_ID = "fnaf:breaker_box_1";
+
+// Open the breaker box UI. The button list comes from whatever blueprint
+// snapshot has been stamped onto this box; if none, the player is told to
+// apply one.
 export function openBreakerBox(player, block) {
   const { x, y, z } = block.location;
   const dim = block.dimension.id;
+  const snapshot = getBreakerBoxSnapshot(dim, x, y, z);
   const state = getBreakerBoxState(dim, x, y, z);
 
-  const anyOn = FNAF1_ROOMS.some(r => state[String(r.id)] === true);
-  const anyOff = FNAF1_ROOMS.some(r => state[String(r.id)] !== true);
-
-  const form = new ActionFormData()
-    .title("§lFNAF 1 §r§7- Breaker Panel")
-    .body(
-      "§7Freddy Fazbear's Pizza\n" +
-      "§8Toggle a breaker to cut or restore power to a room.\n" +
-      "§8Room lights within this dimension will follow the nearest breaker box."
-    );
-
-  for (const r of FNAF1_ROOMS) {
-    const on = state[String(r.id)] === true;
-    const label = `${on ? "§a[ON]§r" : "§c[OFF]§r"}  ${r.name}`;
-    form.button(label);
+  if (!snapshot || !snapshot.rooms || snapshot.rooms.length === 0) {
+    const form = new ActionFormData()
+      .title("§lBreaker Box §7- Unconfigured")
+      .body(
+        "§7No blueprint has been applied to this breaker box yet.\n\n" +
+        "§8• Hold a §fBlueprint§8 and §fsneak + right-click§8 this box to stamp it.\n" +
+        "§8• Right-click a blueprint in the world to open its editor and add rooms."
+      )
+      .button("§7OK");
+    form.show(player).catch(() => {});
+    return;
   }
-  // Always-last utility buttons
-  form.button("§eMain Breaker: §aAll ON");
-  form.button("§eMain Breaker: §cAll OFF");
+
+  const bpName = snapshot.sourceName ? `§7- §f${snapshot.sourceName}` : "";
+  const form = new ActionFormData()
+    .title(`§lBreaker Panel §r${bpName}`)
+    .body("§8Toggle a breaker to cut or restore power to a room.");
+
+  const buttons = [];
+  for (const r of snapshot.rooms) {
+    const on = state[r.id] === true;
+    form.button(`${on ? "§a[ON]§r" : "§c[OFF]§r"}  ${r.name}`);
+    buttons.push({ kind: "toggle", room: r });
+  }
+  form.button("§eMain Breaker: §aAll ON");  buttons.push({ kind: "all_on" });
+  form.button("§eMain Breaker: §cAll OFF"); buttons.push({ kind: "all_off" });
 
   form.show(player).then(res => {
     if (res.canceled || res.selection === undefined) return;
-    const sel = res.selection;
-    if (sel < FNAF1_ROOMS.length) {
-      const room = FNAF1_ROOMS[sel];
-      const nowOn = state[String(room.id)] === true;
-      setRoomPowered(dim, x, y, z, room.id, !nowOn);
-      player.playSound(nowOn ? "random.click" : "random.click");
+    const choice = buttons[res.selection];
+    if (!choice) return;
+
+    if (choice.kind === "toggle") {
+      const nowOn = state[choice.room.id] === true;
+      setRoomPowered(dim, x, y, z, choice.room.id, !nowOn);
       player.onScreenDisplay.setActionBar(
-        `${!nowOn ? "§aPowered on" : "§cCut power to"} §f${room.name}`
+        `${!nowOn ? "§aPowered on" : "§cCut power to"} §f${choice.room.name}`
       );
-    } else if (sel === FNAF1_ROOMS.length) {
-      for (const r of FNAF1_ROOMS) setRoomPowered(dim, x, y, z, r.id, true);
+    } else if (choice.kind === "all_on") {
+      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, true);
       player.onScreenDisplay.setActionBar("§aAll breakers ON");
-    } else if (sel === FNAF1_ROOMS.length + 1) {
-      for (const r of FNAF1_ROOMS) setRoomPowered(dim, x, y, z, r.id, false);
+    } else if (choice.kind === "all_off") {
+      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, false);
       player.onScreenDisplay.setActionBar("§cAll breakers OFF");
     }
-    // Re-open so the player can flip multiple breakers in a row.
+
     system.run(() => {
       try {
-        if (block.typeId === "fnaf:breaker_box_1") {
-          openBreakerBox(player, block);
-        }
-      } catch (_) { /* block gone */ }
+        if (block.typeId === BREAKER_BOX_ID) openBreakerBox(player, block);
+      } catch (_) {}
     });
   }).catch(() => {});
+}
+
+// Snapshot the blueprint into this breaker box's storage. Called when a
+// player sneak-uses a filled blueprint on the box.
+export function applyBlueprintToBreakerBox(player, block, blueprint) {
+  const { x, y, z } = block.location;
+  const dim = block.dimension.id;
+
+  const snapshot = {
+    sourceBpId: blueprint.id,
+    sourceName: blueprint.name,
+    appliedAtTick: system.currentTick,
+    rooms: blueprint.rooms.map(r => ({
+      id: r.id,
+      name: r.name,
+      boxes: r.boxes.map(b => ({ ...b })),
+    })),
+  };
+  setBreakerBoxSnapshot(dim, x, y, z, snapshot);
+  player.onScreenDisplay.setActionBar(
+    `§aApplied §f${blueprint.name}§a to breaker box §7(${snapshot.rooms.length} room${snapshot.rooms.length === 1 ? "" : "s"})`
+  );
 }

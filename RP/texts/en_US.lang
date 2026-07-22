@@ -3,3 +3,4 @@ pack.description=Five Nights at Freddy's addon resource pack. Prototype: FNAF 1 
 
 tile.fnaf:breaker_box_1.name=FNAF 1 Breaker Box
 tile.fnaf:room_light.name=FNAF Room Light
+item.fnaf:blueprint=Blueprint

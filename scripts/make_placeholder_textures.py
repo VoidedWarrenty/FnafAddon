@@ -9,6 +9,7 @@ import struct
 import zlib
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "blocks", "fnaf")
+ITEM_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "items", "fnaf")
 
 
 def write_png(path, pixels):
@@ -77,6 +78,19 @@ def main():
         solid((70, 70, 70), border=(30, 30, 30)),
     )
     print(f"wrote textures to {OUT_DIR}")
+
+    os.makedirs(ITEM_DIR, exist_ok=True)
+    # Blueprint icon: blueprint blue background with white grid lines
+    bp = [[(24, 60, 130, 255) for _ in range(16)] for _ in range(16)]
+    for i in range(16):
+        bp[0][i] = bp[15][i] = bp[i][0] = bp[i][15] = (255, 255, 255, 255)
+    for i in range(16):
+        if i % 4 == 0:
+            for j in range(1, 15):
+                bp[i][j] = (200, 220, 255, 255) if bp[i][j] == (24, 60, 130, 255) else bp[i][j]
+                bp[j][i] = (200, 220, 255, 255) if bp[j][i] == (24, 60, 130, 255) else bp[j][i]
+    write_png(os.path.join(ITEM_DIR, "blueprint.png"), bp)
+    print(f"wrote item textures to {ITEM_DIR}")
 
 
 if __name__ == "__main__":
