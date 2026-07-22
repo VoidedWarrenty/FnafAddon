@@ -1,21 +1,12 @@
 import { world } from "@minecraft/server";
 
-// Renders a top-down ASCII map of the given rooms in the given dimension.
-// Every cell is the same '█' character; only the color code changes, so
-// alignment holds up even in Bedrock's variable-width font (all block
-// characters render at the same fixed width).
-//
-// Cell coloring:
-//   §f  bright white  — a solid block in a room's AABB (a wall)
-//   §7  light gray    — a solid block outside any room's AABB (external walls)
-//   §8  medium gray   — a room interior (air inside an AABB)
-//   §0  black         — outside everything
-//
-// The block scan reflects the *current* world, so an open doorway reads as
-// a gap automatically. Closed doors show as walls until they open.
+// Renders a top-down ASCII map. Every cell is '█', only the color
+// changes — same glyph in every cell keeps alignment intact even in
+// Bedrock's variable-width font. The block scan reflects the current
+// world so open doorways read as gaps.
 
-const DEFAULT_MAX_COLS = 48;
-const DEFAULT_MAX_ROWS = 22;
+const DEFAULT_MAX_COLS = 44;
+const DEFAULT_MAX_ROWS = 18;
 
 function unionBox(boxes) {
   let minX = Infinity, maxX = -Infinity;
@@ -42,14 +33,13 @@ function collectBoxes(rooms, dimensionId) {
   return out;
 }
 
-export function renderMap(dimensionId, rooms, options = {}) {
+// Body of the top-down map (color-coded rows, no border).
+function renderMapGrid(dimensionId, rooms, options = {}) {
   const maxCols = options.maxCols ?? DEFAULT_MAX_COLS;
   const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
 
   const boxes = collectBoxes(rooms, dimensionId);
-  if (boxes.length === 0) {
-    return "§8§o(no boxes defined for this dimension yet)";
-  }
+  if (boxes.length === 0) return null;
 
   const bb = unionBox(boxes);
   const padX = 1, padZ = 1;
@@ -76,46 +66,69 @@ export function renderMap(dimensionId, rooms, options = {}) {
       const wx1 = minX + cx * cellW;
       const wx2 = Math.min(wx1 + cellW - 1, maxX);
 
-      let anySolid = false;
-      let anyInRoom = false;
+      let anySolid = false, anyInRoom = false;
       for (let sx = wx1; sx <= wx2 && (!anySolid || !anyInRoom); sx++) {
         for (let sz = wz1; sz <= wz2 && (!anySolid || !anyInRoom); sz++) {
           for (const b of boxes) {
             if (sx >= b.x1 && sx <= b.x2 &&
                 sz >= b.z1 && sz <= b.z2 &&
-                sliceY >= b.y1 && sliceY <= b.y2) {
-              anyInRoom = true;
-              break;
-            }
+                sliceY >= b.y1 && sliceY <= b.y2) { anyInRoom = true; break; }
           }
           try {
             const block = dim.getBlock({ x: sx, y: sliceY, z: sz });
             if (block && block.typeId !== "minecraft:air") anySolid = true;
-          } catch (_) { /* chunk unloaded */ }
+          } catch (_) {}
         }
       }
 
       let color;
       if (anySolid && anyInRoom) color = "§f";
-      else if (anyInRoom)        color = "§8";
+      else if (anyInRoom)        color = "§9";
       else if (anySolid)         color = "§7";
       else                       color = "§0";
 
-      if (color !== currentColor) {
-        line += color;
-        currentColor = color;
-      }
+      if (color !== currentColor) { line += color; currentColor = color; }
       line += "█";
     }
     lines.push(line);
   }
-  return lines.join("\n");
+  return { lines, cols, rows, minX, minZ, cellW, cellD, sliceY };
 }
 
-// A compact numbered legend below the map. Rooms are laid out in 2 columns.
+// Full framed map with a title strip, compass rose, and coord + scale
+// annotations wrapping the grid.
+export function renderMap(dimensionId, rooms, options = {}) {
+  const grid = renderMapGrid(dimensionId, rooms, options);
+  if (!grid) return "§8§o(no boxes defined for this dimension)";
+
+  const { lines, cols, minX, minZ, cellW, cellD } = grid;
+  const w = cols;
+
+  // Compass rose (single line, right-aligned to grid width)
+  const compass = "§b   N §7▲";
+  const dirBar = "§7W ◀ ─" + "─".repeat(Math.max(1, w - 12)) + "─ ▶ E";
+
+  // Corner + edge frame using § color codes on box drawing chars.
+  const top    = "§9╔" + "═".repeat(w) + "╗";
+  const bottom = "§9╚" + "═".repeat(w) + "╝";
+
+  const framed = lines.map(l => `§9║${l}§9║`);
+  const scale = `§8§oscale §7≈ §f${cellW}§7×§f${cellD}§7 blocks/cell   §8origin §7X§f${minX} §7Z§f${minZ}`;
+
+  return [
+    compass,
+    top,
+    ...framed,
+    bottom,
+    dirBar,
+    scale,
+  ].join("\n");
+}
+
+// A compact numbered legend below the map. Rooms in 2 columns.
 export function renderRoomLegend(rooms) {
   if (!rooms || rooms.length === 0) return "";
-  const numbered = rooms.map((r, i) => `§b[${i + 1}]§r ${r.name}`);
+  const numbered = rooms.map((r, i) => `§b[${i + 1}]§r §f${r.name}`);
   const lines = [];
   for (let i = 0; i < numbered.length; i += 2) {
     const left = (numbered[i] || "").padEnd(28, " ");
