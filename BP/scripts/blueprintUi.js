@@ -7,6 +7,17 @@ import {
 import { startPicking, stopPicking, isPicking, getPickerState } from "./blueprintPicker.js";
 import { FNAF1_ROOMS } from "./rooms.js";
 import { rewriteHeldBlueprintName } from "./blueprintItem.js";
+import { renderMap, renderRoomLegend } from "./mapRender.js";
+
+function blueprintMap(bp, player) {
+  const dim = player.dimension.id;
+  return renderMap(dim, bp.rooms, { maxCols: 46, maxRows: 18 });
+}
+
+function blueprintHeader(bp) {
+  const bar = "§9━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+  return `${bar}\n§8┃ §b§lBLUEPRINT§r §7- §f${bp.name}\n${bar}`;
+}
 
 // Re-open helper: forms have to be re-shown from a system.run tick.
 function later(fn) { system.run(fn); }
@@ -19,40 +30,39 @@ export function openBlueprintEditor(player, bpId) {
   }
 
   const pickerState = getPickerState(player.id);
+  const statusLine = pickerState
+    ? `§ePicking §f${findRoom(bp, pickerState.roomId)?.name ?? "?"}§e — ${pickerState.firstCorner ? "tap 2nd corner" : "tap 1st corner"}`
+    : `§7Rooms: §f${bp.rooms.length}   §7Boxes: §f${bp.rooms.reduce((n, r) => n + r.boxes.length, 0)}`;
   const body = [
-    `§7Name: §f${bp.name}`,
-    `§7Rooms: §f${bp.rooms.length}`,
-    pickerState
-      ? `§ePicking corners for §f${findRoom(bp, pickerState.roomId)?.name ?? "?"}§e (${pickerState.firstCorner ? "tap 2nd corner" : "tap 1st corner"})`
-      : "§8Tap a wall to plant corners once you start picking.",
-  ].join("\n");
+    blueprintHeader(bp),
+    statusLine,
+    blueprintMap(bp, player),
+    renderRoomLegend(bp.rooms),
+  ].filter(Boolean).join("\n");
 
   const form = new ActionFormData()
-    .title("§lBlueprint")
+    .title("§l§bBLUEPRINT")
     .body(body);
 
   const buttons = [];
-  for (const r of bp.rooms) {
-    form.button(`§f${r.name}  §8(${r.boxes.length} box${r.boxes.length === 1 ? "" : "es"})`);
-    buttons.push({ kind: "room", id: r.id });
-  }
 
-  form.button("§a+ Add Room");
-  buttons.push({ kind: "add_room" });
-
-  form.button("§bRename Blueprint");
-  buttons.push({ kind: "rename_bp" });
-
-  form.button("§eLoad FNAF 1 Room Preset");
-  buttons.push({ kind: "preset_fnaf1" });
-
+  // Tools first (until we ship JSON-UI, this is the closest we can get to
+  // a persistent sidebar without pushing them below a long room list).
+  form.button("§a+ Add Room");                buttons.push({ kind: "add_room" });
+  form.button("§bRename Blueprint");          buttons.push({ kind: "rename_bp" });
+  form.button("§eLoad FNAF 1 Room Preset");   buttons.push({ kind: "preset_fnaf1" });
   if (pickerState) {
     form.button("§cCancel Corner Picking");
     buttons.push({ kind: "cancel_picking" });
   }
+  form.button("§4Delete All Rooms");          buttons.push({ kind: "clear_rooms" });
 
-  form.button("§cDelete All Rooms");
-  buttons.push({ kind: "clear_rooms" });
+  // Room list
+  for (let i = 0; i < bp.rooms.length; i++) {
+    const r = bp.rooms[i];
+    form.button(`§b#${i + 1}§r  §f${r.name}  §8(${r.boxes.length} box${r.boxes.length === 1 ? "" : "es"})`);
+    buttons.push({ kind: "room", id: r.id });
+  }
 
   form.show(player).then(res => {
     if (res.canceled || res.selection === undefined) return;
@@ -139,25 +149,41 @@ export function openRoomEditor(player, bpId, roomId) {
   const room = findRoom(bp, roomId);
   if (!room) return later(() => openBlueprintEditor(player, bpId));
 
+  // Show a map of just this one room, so the player sees exactly what
+  // they've painted so far.
+  const map = renderMap(player.dimension.id, [room], { maxCols: 46, maxRows: 14 });
+
   const boxLines = room.boxes.length === 0
-    ? "§8No boxes defined. Add one to give this room bounds."
+    ? "§8No boxes yet. Tap §a+ Add Box §8then plant two corners in the world."
     : room.boxes.map((b, i) =>
         `§7#${i + 1}  §f(${b.x1},${b.y1},${b.z1}) → (${b.x2},${b.y2},${b.z2})`
       ).join("\n");
 
+  const body = [
+    `§9━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `§8┃ §b§lROOM§r §7- §f${room.name}`,
+    `§9━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    map,
+    "",
+    "§7Boxes:",
+    boxLines,
+  ].join("\n");
+
   const form = new ActionFormData()
-    .title(`§lRoom: §r${room.name}`)
-    .body(`§7Boxes:§r\n${boxLines}`);
+    .title(`§lROOM: §r§f${room.name}`)
+    .body(body);
 
   const buttons = [];
-  form.button("§a+ Add Box"); buttons.push({ kind: "add_box" });
+  // Tools first
+  form.button("§a+ Add Box");          buttons.push({ kind: "add_box" });
+  form.button("§bRename Room");        buttons.push({ kind: "rename" });
+  form.button("§4Delete Room");        buttons.push({ kind: "delete" });
+  form.button("§7← Back");             buttons.push({ kind: "back" });
+  // Then each existing box (delete)
   for (let i = 0; i < room.boxes.length; i++) {
-    form.button(`§cDelete Box #${i + 1}`);
+    form.button(`§c✖ Delete Box #${i + 1}`);
     buttons.push({ kind: "del_box", index: i });
   }
-  form.button("§bRename Room"); buttons.push({ kind: "rename" });
-  form.button("§cDelete Room"); buttons.push({ kind: "delete" });
-  form.button("§7← Back"); buttons.push({ kind: "back" });
 
   form.show(player).then(res => {
     if (res.canceled || res.selection === undefined) return;

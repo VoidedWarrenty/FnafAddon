@@ -4,6 +4,12 @@
   "padding": 8,
   "num_mip_levels": 4,
   "texture_data": {
+    "fnaf_breaker_panel_front": {
+      "textures": "textures/blocks/fnaf/breaker_panel_front"
+    },
+    "fnaf_breaker_panel_side": {
+      "textures": "textures/blocks/fnaf/breaker_panel_side"
+    },
     "fnaf_breaker_box_front": {
       "textures": "textures/blocks/fnaf/breaker_box_front"
     },
