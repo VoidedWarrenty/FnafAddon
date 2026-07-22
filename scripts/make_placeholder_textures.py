@@ -10,6 +10,7 @@ import zlib
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "blocks", "fnaf")
 ITEM_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "items", "fnaf")
+ENTITY_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "entity", "fnaf")
 
 
 def write_png(path, pixels):
@@ -130,9 +131,99 @@ def breaker_panel_side_16():
     return px
 
 
+def breaker_panel_entity_64():
+    """64x64 texture matching the breaker_panel.geo.json UV layout.
+
+    Housing (rectangular electrical box) uses UV rows 0..18.
+    Door uses UV rows 18..36.
+
+    - Housing north (front interior, visible when door open): (0,0)-(14,18)
+      Painted with a grid of breaker switch slots.
+    - Housing south (back, against wall):                     (14,0)-(28,18)
+    - Housing east:                                            (28,0)-(32,18)
+    - Housing west:                                            (32,0)-(36,18)
+    - Housing up:                                              (36,0)-(50,4)
+    - Housing down:                                            (36,4)-(50,8)
+    - Door north (outside of door, visible when closed):      (0,18)-(14,36)
+    - Door south (inside of door, room-list sticker):         (14,18)-(28,36)
+    """
+    px = blank(64, 64, (0, 0, 0))  # start transparent-ish black
+
+    metal_light = (170, 170, 175, 255)
+    metal_dark = (110, 110, 115, 255)
+    metal_shadow = (60, 60, 65, 255)
+    slot_dark = (30, 30, 32, 255)
+    switch_body = (215, 215, 210, 255)
+
+    # --- Housing north (front interior, visible when door swings open) ---
+    # Base
+    rect(px, 0, 0, 14, 18, (140, 140, 145))
+    # Inner darker rim
+    for i in range(14):
+        px[0][i] = metal_shadow
+        px[17][i] = metal_shadow
+    for i in range(18):
+        px[i][0] = metal_shadow
+        px[i][13] = metal_shadow
+    # 2 columns of 6 breaker slots (each 3 wide x 2 tall, 2px space)
+    for row in range(6):
+        for col in range(2):
+            sx = 2 + col * 6
+            sy = 3 + row * 2
+            rect(px, sx, sy, 4, 1, (40, 40, 42))
+            # switch cap
+            px[sy][sx + 1] = switch_body
+            px[sy][sx + 2] = switch_body
+    # "MAIN 200A" strip at top
+    rect(px, 4, 1, 6, 1, (200, 200, 200))
+
+    # --- Housing south (back) ---
+    rect(px, 14, 0, 14, 18, (95, 95, 100))
+
+    # --- Housing east/west (sides) ---
+    rect(px, 28, 0, 4, 18, metal_dark[:3])
+    rect(px, 32, 0, 4, 18, metal_dark[:3])
+
+    # --- Housing top/bottom ---
+    rect(px, 36, 0, 14, 4, metal_dark[:3])
+    rect(px, 36, 4, 14, 4, metal_dark[:3])
+
+    # --- Door north (outside; visible when closed) ---
+    # Metal door with a small vent/label near top
+    rect(px, 0, 18, 14, 18, (155, 155, 160))
+    # Border rivets
+    for (dx, dy) in [(0, 0), (13, 0), (0, 17), (13, 17)]:
+        px[18 + dy][dx] = (70, 70, 75, 255)
+    # Handle on the right side, vertical
+    rect(px, 11, 24, 1, 6, metal_shadow[:3])
+    # DANGER sticker on top-left
+    rect(px, 1, 19, 8, 3, (170, 40, 40))
+    rect(px, 1, 20, 8, 1, (240, 220, 220))
+
+    # --- Door south (inside; the room-list sticker area) ---
+    rect(px, 14, 18, 14, 18, (245, 240, 225))     # paper
+    # DANGER banner at top
+    rect(px, 15, 19, 12, 2, (170, 40, 40))
+    # rules lines below (fake writing)
+    for i in range(7):
+        y = 22 + i * 2
+        rect(px, 15, y, 12, 1, (55, 55, 60))
+
+    # --- Door thin edges (top/bottom/east/west of door cube) ---
+    rect(px, 28, 18, 2, 18, metal_dark[:3])
+    rect(px, 30, 18, 14, 1, metal_dark[:3])
+    rect(px, 30, 19, 14, 1, metal_dark[:3])
+
+    return px
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     os.makedirs(ITEM_DIR, exist_ok=True)
+    os.makedirs(ENTITY_DIR, exist_ok=True)
+
+    write_png(os.path.join(ENTITY_DIR, "breaker_panel.png"), breaker_panel_entity_64())
+    print(f"wrote entity textures to {ENTITY_DIR}")
 
     # New wall-mount panel textures
     write_png(os.path.join(OUT_DIR, "breaker_panel_front.png"), breaker_panel_front_32())
@@ -171,6 +262,19 @@ def main():
                 if bp[j][i] == (24, 60, 130, 255):
                     bp[j][i] = (200, 220, 255, 255)
     write_png(os.path.join(ITEM_DIR, "blueprint.png"), bp)
+
+    # Breaker box item icon: mini panel look
+    bb = blank(16, 16, (110, 110, 115))
+    for i in range(16):
+        bb[0][i] = bb[15][i] = bb[i][0] = bb[i][15] = (55, 55, 60, 255)
+    # Handle
+    rect(bb, 13, 6, 1, 4, (60, 60, 65))
+    # Slots
+    for row in range(3):
+        for col in range(2):
+            rect(bb, 3 + col * 4, 4 + row * 3, 3, 1, (215, 215, 210))
+            bb[4 + row * 3][4 + col * 4] = (35, 35, 35, 255)
+    write_png(os.path.join(ITEM_DIR, "breaker_box.png"), bb)
     print(f"wrote item textures to {ITEM_DIR}")
 
 

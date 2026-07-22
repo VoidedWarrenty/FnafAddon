@@ -1,0 +1,36 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.breaker_panel.door": {
+      "initial_state": "closed",
+      "states": {
+        "closed": {
+          "animations": ["door_closed"],
+          "transitions": [
+            { "opening": "q.property('fnaf:is_open')" }
+          ]
+        },
+        "opening": {
+          "animations": ["door_open"],
+          "blend_transition": 0.35,
+          "transitions": [
+            { "open": "1.0" }
+          ]
+        },
+        "open": {
+          "animations": ["door_open"],
+          "transitions": [
+            { "closing": "!q.property('fnaf:is_open')" }
+          ]
+        },
+        "closing": {
+          "animations": ["door_closed"],
+          "blend_transition": 0.35,
+          "transitions": [
+            { "closed": "1.0" }
+          ]
+        }
+      }
+    }
+  }
+}

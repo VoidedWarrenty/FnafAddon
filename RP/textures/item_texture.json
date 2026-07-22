@@ -4,6 +4,9 @@
   "texture_data": {
     "fnaf_blueprint": {
       "textures": "textures/items/fnaf/blueprint"
+    },
+    "fnaf_breaker_box_item": {
+      "textures": "textures/items/fnaf/breaker_box"
     }
   }
 }
