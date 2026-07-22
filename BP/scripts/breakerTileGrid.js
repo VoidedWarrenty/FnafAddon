@@ -2,9 +2,10 @@ import { world } from "@minecraft/server";
 import { pointInRoom } from "./blueprint.js";
 
 // Fixed grid size — must match the JSON-UI grid_dimensions in
-// RP/ui/server_form.json. 24 wide × 14 tall = 336 buttons.
-export const GRID_COLS = 24;
-export const GRID_ROWS = 14;
+// RP/ui/server_form.json. 16 wide × 10 tall = 160 buttons.
+// (Down from 24×14=336 for open-time performance on mobile.)
+export const GRID_COLS = 16;
+export const GRID_ROWS = 10;
 export const GRID_TOTAL = GRID_COLS * GRID_ROWS;
 
 // The set of tile names must match PNG files at
