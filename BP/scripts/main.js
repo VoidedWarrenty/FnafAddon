@@ -69,8 +69,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe(ev => {
   if (!throttle(player)) return;
 
   system.run(() => {
-    // Any tap on the panel opens the door if closed, and opens the form UI.
-    // Sneak-only-with-no-blueprint just toggles the door for aesthetics.
+    // Sneak-tap always toggles the door.
     if (player.isSneaking) {
       const nowOpen = togglePanelDoor(block);
       player.onScreenDisplay.setActionBar(
@@ -78,12 +77,12 @@ world.beforeEvents.playerInteractWithBlock.subscribe(ev => {
       );
       return;
     }
-    // Auto-open the door when the player taps to interact.
-    try {
-      if (block.permutation.getState("fnaf:is_open") !== true) {
-        block.setPermutation(block.permutation.withState("fnaf:is_open", true));
-      }
-    } catch (_) {}
+    // Normal tap opens the UI only if the door is already open.
+    const isOpen = block.permutation.getState("fnaf:is_open") === true;
+    if (!isOpen) {
+      player.onScreenDisplay.setActionBar("§7Panel is closed — sneak-tap to open it first.");
+      return;
+    }
     openBreakerBox(player, block);
   });
 });

@@ -34,7 +34,8 @@
       "minecraft:selection_box": {
         "origin": [-7, 0, 3.5],
         "size":   [14, 18, 4.5]
-      }
+      },
+      "minecraft:transformation": { "rotation": [0, 180, 0] }
     },
     "permutations": [
       {
@@ -46,19 +47,19 @@
       {
         "condition": "q.block_state('minecraft:cardinal_direction') == 'south'",
         "components": {
-          "minecraft:transformation": { "rotation": [0, 180, 0] }
+          "minecraft:transformation": { "rotation": [0, 0, 0] }
         }
       },
       {
         "condition": "q.block_state('minecraft:cardinal_direction') == 'east'",
         "components": {
-          "minecraft:transformation": { "rotation": [0, 90, 0] }
+          "minecraft:transformation": { "rotation": [0, 270, 0] }
         }
       },
       {
         "condition": "q.block_state('minecraft:cardinal_direction') == 'west'",
         "components": {
-          "minecraft:transformation": { "rotation": [0, 270, 0] }
+          "minecraft:transformation": { "rotation": [0, 90, 0] }
         }
       }
     ]
