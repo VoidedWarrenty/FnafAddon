@@ -1,9 +1,16 @@
 import { world } from "@minecraft/server";
 
-// Renders a top-down ASCII map. Every cell is '█', only the color
-// changes — same glyph in every cell keeps alignment intact even in
-// Bedrock's variable-width font. The block scan reflects the current
-// world so open doorways read as gaps.
+// Top-down ASCII map. Every cell is '█', color changes per classification.
+//
+// Cell classification (highest priority wins):
+//   wall     = a block on an AABB perimeter is solid → §f white
+//   doorway  = a block on an AABB perimeter is air   → §e yellow (opening)
+//   interior = point inside an AABB, not on perimeter → §9 blue (floor)
+//   exterior = point outside every AABB              → §0 black
+//
+// Furniture, decorations, checkerboard floors, etc. inside a room DON'T
+// count as walls — walls are only what sits on the box perimeter the user
+// painted. That's what the AABB is *for*.
 
 const DEFAULT_MAX_COLS = 44;
 const DEFAULT_MAX_ROWS = 18;
@@ -33,7 +40,50 @@ function collectBoxes(rooms, dimensionId) {
   return out;
 }
 
-// Body of the top-down map (color-coded rows, no border).
+// Classify a single world point at (sx, sy, sz) against the box set.
+// Returns "wall" | "doorway" | "interior" | "exterior".
+function classifyPoint(dim, sx, sy, sz, boxes) {
+  let inRoom = false, onPerim = false;
+  for (const b of boxes) {
+    if (sy < b.y1 || sy > b.y2) continue;
+    const inX = sx >= b.x1 && sx <= b.x2;
+    const inZ = sz >= b.z1 && sz <= b.z2;
+    if (inX && inZ) {
+      inRoom = true;
+      if (sx === b.x1 || sx === b.x2 || sz === b.z1 || sz === b.z2) {
+        onPerim = true;
+        break;
+      }
+    }
+  }
+  if (!inRoom) return "exterior";
+  if (!onPerim) return "interior";
+  let solid = false;
+  try {
+    const block = dim.getBlock({ x: sx, y: sy, z: sz });
+    if (block && block.typeId !== "minecraft:air") solid = true;
+  } catch (_) {}
+  return solid ? "wall" : "doorway";
+}
+
+const PRIORITY = { wall: 4, doorway: 3, interior: 2, exterior: 1 };
+
+// A downsampled cell picks the highest-priority classification of any point
+// it covers. Wall trumps doorway trumps interior trumps exterior.
+function classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, boxes) {
+  let best = "exterior";
+  for (const sy of scanYs) {
+    for (let sx = wx1; sx <= wx2; sx++) {
+      for (let sz = wz1; sz <= wz2; sz++) {
+        const cls = classifyPoint(dim, sx, sy, sz, boxes);
+        if (PRIORITY[cls] > PRIORITY[best]) best = cls;
+        if (best === "wall") return "wall";
+      }
+    }
+  }
+  return best;
+}
+
 function renderMapGrid(dimensionId, rooms, options = {}) {
   const maxCols = options.maxCols ?? DEFAULT_MAX_COLS;
   const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
@@ -53,9 +103,18 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
   const cols = Math.ceil(worldW / cellW);
   const rows = Math.ceil(worldD / cellD);
 
-  const sliceY = Math.floor((bb.minY + bb.maxY) / 2);
-  const dim = world.getDimension(dimensionId);
+  // Sample multiple Y levels above every box's floor so a wall at any
+  // height counts. Skip the top of the room to avoid ceiling blocks.
+  const scanYs = [];
+  for (const b of boxes) {
+    for (let k = 1; k <= 3; k++) {
+      const y = b.y1 + k;
+      if (y < b.y2 && !scanYs.includes(y)) scanYs.push(y);
+    }
+  }
+  if (scanYs.length === 0) scanYs.push(Math.floor((bb.minY + bb.maxY) / 2));
 
+  const dim = world.getDimension(dimensionId);
   const lines = [];
   for (let ry = 0; ry < rows; ry++) {
     let line = "";
@@ -65,55 +124,33 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
     for (let cx = 0; cx < cols; cx++) {
       const wx1 = minX + cx * cellW;
       const wx2 = Math.min(wx1 + cellW - 1, maxX);
-
-      let anySolid = false, anyInRoom = false;
-      for (let sx = wx1; sx <= wx2 && (!anySolid || !anyInRoom); sx++) {
-        for (let sz = wz1; sz <= wz2 && (!anySolid || !anyInRoom); sz++) {
-          for (const b of boxes) {
-            if (sx >= b.x1 && sx <= b.x2 &&
-                sz >= b.z1 && sz <= b.z2 &&
-                sliceY >= b.y1 && sliceY <= b.y2) { anyInRoom = true; break; }
-          }
-          try {
-            const block = dim.getBlock({ x: sx, y: sliceY, z: sz });
-            if (block && block.typeId !== "minecraft:air") anySolid = true;
-          } catch (_) {}
-        }
-      }
-
+      const cls = classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, boxes);
       let color;
-      if (anySolid && anyInRoom) color = "§f";
-      else if (anyInRoom)        color = "§9";
-      else if (anySolid)         color = "§7";
-      else                       color = "§0";
-
+      if (cls === "wall")          color = "§f";
+      else if (cls === "doorway")  color = "§e";
+      else if (cls === "interior") color = "§9";
+      else                          color = "§0";
       if (color !== currentColor) { line += color; currentColor = color; }
       line += "█";
     }
     lines.push(line);
   }
-  return { lines, cols, rows, minX, minZ, cellW, cellD, sliceY };
+  return { lines, cols, rows, minX, minZ, cellW, cellD };
 }
 
-// Full framed map with a title strip, compass rose, and coord + scale
-// annotations wrapping the grid.
 export function renderMap(dimensionId, rooms, options = {}) {
   const grid = renderMapGrid(dimensionId, rooms, options);
   if (!grid) return "§8§o(no boxes defined for this dimension)";
-
   const { lines, cols, minX, minZ, cellW, cellD } = grid;
   const w = cols;
 
-  // Compass rose (single line, right-aligned to grid width)
   const compass = "§b   N §7▲";
   const dirBar = "§7W ◀ ─" + "─".repeat(Math.max(1, w - 12)) + "─ ▶ E";
-
-  // Corner + edge frame using § color codes on box drawing chars.
   const top    = "§9╔" + "═".repeat(w) + "╗";
   const bottom = "§9╚" + "═".repeat(w) + "╝";
-
   const framed = lines.map(l => `§9║${l}§9║`);
   const scale = `§8§oscale §7≈ §f${cellW}§7×§f${cellD}§7 blocks/cell   §8origin §7X§f${minX} §7Z§f${minZ}`;
+  const legendKey = "§f█§7 wall  §e█§7 doorway  §9█§7 floor";
 
   return [
     compass,
@@ -121,11 +158,11 @@ export function renderMap(dimensionId, rooms, options = {}) {
     ...framed,
     bottom,
     dirBar,
+    legendKey,
     scale,
   ].join("\n");
 }
 
-// A compact numbered legend below the map. Rooms in 2 columns.
 export function renderRoomLegend(rooms) {
   if (!rooms || rooms.length === 0) return "";
   const numbered = rooms.map((r, i) => `§b[${i + 1}]§r §f${r.name}`);
