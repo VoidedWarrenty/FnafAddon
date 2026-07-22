@@ -1,0 +1,28 @@
+{
+  "format_version": "1.21.10",
+  "minecraft:block": {
+    "description": {
+      "identifier": "fnaf:breaker_box_1",
+      "menu_category": {
+        "category": "items",
+        "group": "itemGroup.name.miscellaneous"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.2 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 10 },
+      "minecraft:map_color": "#3a3a3a",
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "fnaf_breaker_box_side",
+          "render_method": "opaque"
+        },
+        "north": {
+          "texture": "fnaf_breaker_box_front",
+          "render_method": "opaque"
+        }
+      }
+    }
+  }
+}
