@@ -1,107 +1,107 @@
 {
-  "format_version": "1.16.0",
-  "minecraft:geometry": [
-    {
-      "description": {
-        "identifier": "geometry.fnaf.breaker_panel_3d",
-        "texture_width": 64,
-        "texture_height": 64,
-        "visible_bounds_width": 3,
-        "visible_bounds_height": 3,
-        "visible_bounds_offset": [0, 1.0, 0]
-      },
-      "bones": [
-        {
-          "name": "root",
-          "pivot": [0, 0, 0]
-        },
-        {
-          "name": "housing",
-          "parent": "root",
-          "pivot": [0, 12, 0],
-          "cubes": [
-            {
-              "origin": [-5, 6, -1],
-              "size": [10, 14, 1],
-              "uv": {
-                "north": { "uv": [0, 0],   "uv_size": [10, 14] },
-                "south": { "uv": [10, 0],  "uv_size": [10, 14] },
-                "east":  { "uv": [20, 0],  "uv_size": [1, 14] },
-                "west":  { "uv": [21, 0],  "uv_size": [1, 14] },
-                "up":    { "uv": [0, 14],  "uv_size": [10, 1] },
-                "down":  { "uv": [10, 14], "uv_size": [10, 1] }
-              }
-            },
-            {
-              "origin": [-7, 20, -4],
-              "size": [14, 2, 4],
-              "uv": {
-                "north": { "uv": [22, 0],  "uv_size": [14, 2] },
-                "south": { "uv": [22, 2],  "uv_size": [14, 2] },
-                "east":  { "uv": [36, 0],  "uv_size": [4, 2] },
-                "west":  { "uv": [36, 2],  "uv_size": [4, 2] },
-                "up":    { "uv": [40, 0],  "uv_size": [14, 4] },
-                "down":  { "uv": [40, 4],  "uv_size": [14, 4] }
-              }
-            },
-            {
-              "origin": [-7, 4, -4],
-              "size": [14, 2, 4],
-              "uv": {
-                "north": { "uv": [22, 4],  "uv_size": [14, 2] },
-                "south": { "uv": [22, 6],  "uv_size": [14, 2] },
-                "east":  { "uv": [36, 4],  "uv_size": [4, 2] },
-                "west":  { "uv": [36, 6],  "uv_size": [4, 2] },
-                "up":    { "uv": [40, 8],  "uv_size": [14, 4] },
-                "down":  { "uv": [40, 12], "uv_size": [14, 4] }
-              }
-            },
-            {
-              "origin": [-7, 6, -4],
-              "size": [2, 14, 4],
-              "uv": {
-                "north": { "uv": [22, 8],  "uv_size": [2, 14] },
-                "south": { "uv": [24, 8],  "uv_size": [2, 14] },
-                "east":  { "uv": [26, 8],  "uv_size": [4, 14] },
-                "west":  { "uv": [30, 8],  "uv_size": [4, 14] },
-                "up":    { "uv": [54, 0],  "uv_size": [2, 4] },
-                "down":  { "uv": [56, 0],  "uv_size": [2, 4] }
-              }
-            },
-            {
-              "origin": [5, 6, -4],
-              "size": [2, 14, 4],
-              "uv": {
-                "north": { "uv": [34, 8],  "uv_size": [2, 14] },
-                "south": { "uv": [36, 8],  "uv_size": [2, 14] },
-                "east":  { "uv": [38, 8],  "uv_size": [4, 14] },
-                "west":  { "uv": [42, 8],  "uv_size": [4, 14] },
-                "up":    { "uv": [58, 0],  "uv_size": [2, 4] },
-                "down":  { "uv": [60, 0],  "uv_size": [2, 4] }
-              }
-            }
-          ]
-        },
-        {
-          "name": "door",
-          "parent": "housing",
-          "pivot": [-7, 13, -4],
-          "cubes": [
-            {
-              "origin": [-7, 4, -4.5],
-              "size": [14, 18, 0.5],
-              "uv": {
-                "north": { "uv": [0, 22],  "uv_size": [14, 18] },
-                "south": { "uv": [14, 22], "uv_size": [14, 18] },
-                "east":  { "uv": [28, 22], "uv_size": [1, 18] },
-                "west":  { "uv": [29, 22], "uv_size": [1, 18] },
-                "up":    { "uv": [30, 22], "uv_size": [14, 1] },
-                "down":  { "uv": [30, 23], "uv_size": [14, 1] }
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.fnaf.breaker_panel_3d",
+				"texture_width": 64,
+				"texture_height": 64,
+				"visible_bounds_width": 3,
+				"visible_bounds_height": 3,
+				"visible_bounds_offset": [0, 1, 0]
+			},
+			"bones": [
+				{
+					"name": "root",
+					"pivot": [0, -4, 8]
+				},
+				{
+					"name": "housing",
+					"parent": "root",
+					"pivot": [0, 8, 8],
+					"cubes": [
+						{
+							"origin": [-5, 2, 5],
+							"size": [10, 14, 3],
+							"uv": {
+								"north": {"uv": [0, 0], "uv_size": [10, 14]},
+								"east": {"uv": [20, 0], "uv_size": [1, 14]},
+								"south": {"uv": [10, 0], "uv_size": [10, 14]},
+								"west": {"uv": [21, 0], "uv_size": [1, 14]},
+								"up": {"uv": [0, 14], "uv_size": [10, 1]},
+								"down": {"uv": [10, 14], "uv_size": [10, 1]}
+							}
+						},
+						{
+							"origin": [-7, 16, 4],
+							"size": [14, 2, 4],
+							"uv": {
+								"north": {"uv": [22, 0], "uv_size": [14, 2]},
+								"east": {"uv": [36, 0], "uv_size": [4, 2]},
+								"south": {"uv": [22, 2], "uv_size": [14, 2]},
+								"west": {"uv": [36, 2], "uv_size": [4, 2]},
+								"up": {"uv": [40, 0], "uv_size": [14, 4]},
+								"down": {"uv": [40, 4], "uv_size": [14, 4]}
+							}
+						},
+						{
+							"origin": [-7, 0, 4],
+							"size": [14, 2, 4],
+							"uv": {
+								"north": {"uv": [22, 4], "uv_size": [14, 2]},
+								"east": {"uv": [36, 4], "uv_size": [4, 2]},
+								"south": {"uv": [22, 6], "uv_size": [14, 2]},
+								"west": {"uv": [36, 6], "uv_size": [4, 2]},
+								"up": {"uv": [40, 8], "uv_size": [14, 4]},
+								"down": {"uv": [40, 12], "uv_size": [14, 4]}
+							}
+						},
+						{
+							"origin": [-7, 2, 4],
+							"size": [2, 14, 4],
+							"uv": {
+								"north": {"uv": [22, 8], "uv_size": [2, 14]},
+								"east": {"uv": [26, 8], "uv_size": [4, 14]},
+								"south": {"uv": [24, 8], "uv_size": [2, 14]},
+								"west": {"uv": [30, 8], "uv_size": [4, 14]},
+								"up": {"uv": [54, 0], "uv_size": [2, 4]},
+								"down": {"uv": [56, 0], "uv_size": [2, 4]}
+							}
+						},
+						{
+							"origin": [5, 2, 4],
+							"size": [2, 14, 4],
+							"uv": {
+								"north": {"uv": [34, 8], "uv_size": [2, 14]},
+								"east": {"uv": [38, 8], "uv_size": [4, 14]},
+								"south": {"uv": [36, 8], "uv_size": [2, 14]},
+								"west": {"uv": [42, 8], "uv_size": [4, 14]},
+								"up": {"uv": [58, 0], "uv_size": [2, 4]},
+								"down": {"uv": [60, 0], "uv_size": [2, 4]}
+							}
+						}
+					]
+				},
+				{
+					"name": "door",
+					"parent": "housing",
+					"pivot": [-7, 9, 4],
+					"cubes": [
+						{
+							"origin": [-7, 0, 3.5],
+							"size": [14, 18, 0.5],
+							"uv": {
+								"north": {"uv": [0, 22], "uv_size": [14, 18]},
+								"east": {"uv": [28, 22], "uv_size": [1, 18]},
+								"south": {"uv": [14, 22], "uv_size": [14, 18]},
+								"west": {"uv": [29, 22], "uv_size": [1, 18]},
+								"up": {"uv": [30, 22], "uv_size": [14, 1]},
+								"down": {"uv": [30, 23], "uv_size": [14, 1]}
+							}
+						}
+					]
+				}
+			]
+		}
+	]
 }
