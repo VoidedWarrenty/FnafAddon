@@ -1,22 +1,23 @@
 import { world, system } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
 import {
-  getPanelState, getPanelSnapshot, setPanelSnapshot, setRoomPowered,
+  getBreakerBoxState, setRoomPowered,
+  getBreakerBoxSnapshot, setBreakerBoxSnapshot,
 } from "./state.js";
 import { renderMap, renderRoomLegend } from "./mapRender.js";
 
-export const PANEL_ENTITY_ID = "fnaf:breaker_panel";
-export const PANEL_ITEM_ID = "fnaf:breaker_box_1";
-export const PANEL_OPEN_PROP = "fnaf:is_open";
+export const BREAKER_BOX_ID = "fnaf:breaker_box_1";
 
 function panelHeader(title, subtitle) {
   const bar = "§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
   return `${bar}\n§8┃ §f§l${title}§r §7- §7${subtitle}\n${bar}`;
 }
 
-export function openBreakerPanelForm(player, entity) {
-  const snapshot = getPanelSnapshot(entity);
-  const state = getPanelState(entity);
+export function openBreakerBox(player, block) {
+  const { x, y, z } = block.location;
+  const dim = block.dimension.id;
+  const snapshot = getBreakerBoxSnapshot(dim, x, y, z);
+  const state = getBreakerBoxState(dim, x, y, z);
 
   if (!snapshot || !snapshot.rooms || snapshot.rooms.length === 0) {
     const form = new ActionFormData()
@@ -24,7 +25,7 @@ export function openBreakerPanelForm(player, entity) {
       .body(
         panelHeader("MAIN PANEL", "unconfigured") + "\n\n" +
         "§7No blueprint has been applied to this panel yet.\n\n" +
-        "§8• Hold a §fBlueprint§8, sneak, and interact with this panel.\n" +
+        "§8• Hold a §fBlueprint§8, sneak, and tap this panel to stamp it.\n" +
         "§8• Right-click a blueprint anywhere to open its editor."
       )
       .button("§7OK");
@@ -36,7 +37,7 @@ export function openBreakerPanelForm(player, entity) {
   const total = snapshot.rooms.length;
   const bpName = snapshot.sourceName || "Unnamed";
 
-  const map = renderMap(entity.dimension.id, snapshot.rooms, { maxCols: 46, maxRows: 18 });
+  const map = renderMap(dim, snapshot.rooms, { maxCols: 46, maxRows: 18 });
   const legend = renderRoomLegend(snapshot.rooms);
   const body =
     panelHeader(bpName.toUpperCase(), `${powered}/${total} ON`) +
@@ -63,28 +64,29 @@ export function openBreakerPanelForm(player, entity) {
 
     if (choice.kind === "toggle") {
       const nowOn = state[choice.room.id] === true;
-      setRoomPowered(entity, choice.room.id, !nowOn);
+      setRoomPowered(dim, x, y, z, choice.room.id, !nowOn);
       player.onScreenDisplay.setActionBar(
         `${!nowOn ? "§aBreaker flipped ON" : "§cBreaker flipped OFF"} §7- §f${choice.room.name}`
       );
     } else if (choice.kind === "all_on") {
-      for (const r of snapshot.rooms) setRoomPowered(entity, r.id, true);
+      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, true);
       player.onScreenDisplay.setActionBar("§aMain breaker ON — all rooms powered");
     } else if (choice.kind === "all_off") {
-      for (const r of snapshot.rooms) setRoomPowered(entity, r.id, false);
+      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, false);
       player.onScreenDisplay.setActionBar("§cMain breaker OFF — power cut to all rooms");
     }
 
     system.run(() => {
       try {
-        if (entity.typeId === PANEL_ENTITY_ID) openBreakerPanelForm(player, entity);
+        if (block.typeId === BREAKER_BOX_ID) openBreakerBox(player, block);
       } catch (_) {}
     });
   }).catch(() => {});
 }
 
-// Sneak + interact with blueprint on the panel = stamp its snapshot.
-export function applyBlueprintToPanel(player, entity, blueprint) {
+export function applyBlueprintToBreakerBox(player, block, blueprint) {
+  const { x, y, z } = block.location;
+  const dim = block.dimension.id;
   const snapshot = {
     sourceBpId: blueprint.id,
     sourceName: blueprint.name,
@@ -95,32 +97,18 @@ export function applyBlueprintToPanel(player, entity, blueprint) {
       boxes: r.boxes.map(b => ({ ...b })),
     })),
   };
-  setPanelSnapshot(entity, snapshot);
+  setBreakerBoxSnapshot(dim, x, y, z, snapshot);
   player.onScreenDisplay.setActionBar(
     `§aApplied §f${blueprint.name}§a to panel §7(${snapshot.rooms.length} room${snapshot.rooms.length === 1 ? "" : "s"})`
   );
 }
 
-// Spawn a panel entity in front of the block the item was used on.
-export function spawnPanelAtHit(player, block, faceLocation, blockFace) {
-  const dim = player.dimension;
-  // Offset the entity slightly out of the block face so it doesn't clip.
-  const loc = { x: faceLocation.x, y: faceLocation.y, z: faceLocation.z };
-  const entity = dim.spawnEntity(PANEL_ENTITY_ID, loc);
-  // Face the entity toward the player (away from the wall it's mounted on).
+// Toggle the door open/closed by swapping the fnaf:is_open block state.
+// Blocks can't animate bones, so the door snaps.
+export function togglePanelDoor(block) {
+  const isOpen = block.permutation.getState("fnaf:is_open") === true;
   try {
-    const rot = player.getRotation();
-    entity.setRotation({ x: 0, y: rot.y + 180 });
+    block.setPermutation(block.permutation.withState("fnaf:is_open", !isOpen));
   } catch (_) {}
-  player.onScreenDisplay.setActionBar("§aBreaker panel installed. Interact to open.");
-  return entity;
-}
-
-// Toggle the door open/closed animation property on the entity.
-export function togglePanelDoor(entity) {
-  const wasOpen = entity.getProperty(PANEL_OPEN_PROP) === true;
-  try {
-    entity.setProperty(PANEL_OPEN_PROP, !wasOpen);
-  } catch (_) {}
-  return !wasOpen;
+  return !isOpen;
 }

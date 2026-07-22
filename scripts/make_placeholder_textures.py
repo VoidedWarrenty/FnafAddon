@@ -10,7 +10,6 @@ import zlib
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "blocks", "fnaf")
 ITEM_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "items", "fnaf")
-ENTITY_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "entity", "fnaf")
 
 
 def write_png(path, pixels):
@@ -211,10 +210,8 @@ def breaker_panel_entity_64():
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     os.makedirs(ITEM_DIR, exist_ok=True)
-    os.makedirs(ENTITY_DIR, exist_ok=True)
 
-    write_png(os.path.join(ENTITY_DIR, "breaker_panel.png"), breaker_panel_entity_64())
-    print(f"wrote entity textures to {ENTITY_DIR}")
+    write_png(os.path.join(OUT_DIR, "breaker_panel.png"), breaker_panel_entity_64())
 
     # New wall-mount panel textures
     write_png(os.path.join(OUT_DIR, "breaker_panel_front.png"), breaker_panel_front_32())

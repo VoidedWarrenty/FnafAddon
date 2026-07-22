@@ -1,11 +1,11 @@
 import { world, system } from "@minecraft/server";
 import {
-  openBreakerPanelForm, applyBlueprintToPanel, togglePanelDoor,
-  spawnPanelAtHit,
-  PANEL_ENTITY_ID, PANEL_ITEM_ID,
+  openBreakerBox, applyBlueprintToBreakerBox, togglePanelDoor,
+  BREAKER_BOX_ID,
 } from "./breakerBox.js";
 import { syncAllRoomLights } from "./roomLight.js";
 import {
+  registerBreakerBox, unregisterBreakerBox,
   registerRoomLight, unregisterRoomLight,
 } from "./state.js";
 import {
@@ -24,23 +24,27 @@ function throttle(player) {
   return true;
 }
 
-// --- Blueprint item interactions --------------------------------------
+// --- Item interactions (blueprint + breaker box holding blueprint) ---
 
 world.beforeEvents.itemUseOn.subscribe(ev => {
   const { itemStack, source: player, block } = ev;
-  if (!itemStack) return;
+  if (!itemStack || itemStack.typeId !== BLUEPRINT_ID) return;
+  ev.cancel = true;
+  if (!throttle(player)) return;
 
-  // Breaker box item → spawn the entity in front of the clicked face
-  if (itemStack.typeId === PANEL_ITEM_ID) {
-    ev.cancel = true;
-    if (!throttle(player)) return;
-    system.run(() => spawnPanelAtHit(player, block, ev.faceLocation, ev.blockFace));
+  // Sneak + blueprint on breaker box → apply snapshot
+  if (player.isSneaking && block?.typeId === BREAKER_BOX_ID) {
+    system.run(() => {
+      const { bp } = ensureBlueprint(player, itemStack);
+      if (bp.rooms.length === 0) {
+        player.onScreenDisplay.setActionBar("§eBlueprint has no rooms yet — add some first.");
+        return;
+      }
+      applyBlueprintToBreakerBox(player, block, bp);
+    });
     return;
   }
 
-  if (itemStack.typeId !== BLUEPRINT_ID) return;
-  ev.cancel = true;
-  if (!throttle(player)) return;
   system.run(() => handleBlueprintUseOn(player, itemStack, block));
 });
 
@@ -52,54 +56,45 @@ world.beforeEvents.itemUse.subscribe(ev => {
   system.run(() => handleBlueprintUseAir(player, itemStack));
 });
 
-// --- Breaker panel entity interactions --------------------------------
+// --- Block interactions (breaker box) --------------------------------
 
-world.beforeEvents.playerInteractWithEntity.subscribe(ev => {
-  const { target, player, itemStack } = ev;
-  if (!target || target.typeId !== PANEL_ENTITY_ID) return;
+world.beforeEvents.playerInteractWithBlock.subscribe(ev => {
+  const { block, player, itemStack } = ev;
+  if (!block) return;
+  // Blueprints handled in itemUseOn above.
+  if (itemStack?.typeId === BLUEPRINT_ID) return;
+  if (block.typeId !== BREAKER_BOX_ID) return;
+
   ev.cancel = true;
   if (!throttle(player)) return;
 
-  // Sneak + blueprint = apply snapshot
-  if (player.isSneaking && itemStack?.typeId === BLUEPRINT_ID) {
-    system.run(() => {
-      const { bp } = ensureBlueprint(player, itemStack);
-      if (bp.rooms.length === 0) {
-        player.onScreenDisplay.setActionBar("§eBlueprint has no rooms yet — add some first.");
-        return;
-      }
-      applyBlueprintToPanel(player, target, bp);
-    });
-    return;
-  }
-
-  // Sneak alone (no blueprint) = swing the door open/closed
-  if (player.isSneaking) {
-    system.run(() => {
-      const nowOpen = togglePanelDoor(target);
+  system.run(() => {
+    // Any tap on the panel opens the door if closed, and opens the form UI.
+    // Sneak-only-with-no-blueprint just toggles the door for aesthetics.
+    if (player.isSneaking) {
+      const nowOpen = togglePanelDoor(block);
       player.onScreenDisplay.setActionBar(
         nowOpen ? "§7Panel door opened" : "§7Panel door closed"
       );
-    });
-    return;
-  }
-
-  // Normal interact → open the form (also auto-opens the door visually)
-  system.run(() => {
+      return;
+    }
+    // Auto-open the door when the player taps to interact.
     try {
-      if (target.getProperty("fnaf:is_open") !== true) {
-        target.setProperty("fnaf:is_open", true);
+      if (block.permutation.getState("fnaf:is_open") !== true) {
+        block.setPermutation(block.permutation.withState("fnaf:is_open", true));
       }
     } catch (_) {}
-    openBreakerPanelForm(player, target);
+    openBreakerBox(player, block);
   });
 });
 
-// --- Block placement / break for room_light registry ------------------
+// --- Placement / break registry sync ---------------------------------
 
 world.afterEvents.playerPlaceBlock.subscribe(ev => {
   const b = ev.block;
-  if (b.typeId === LIGHT_ID) {
+  if (b.typeId === BREAKER_BOX_ID) {
+    registerBreakerBox(b.dimension.id, b.location.x, b.location.y, b.location.z);
+  } else if (b.typeId === LIGHT_ID) {
     registerRoomLight(b.dimension.id, b.location.x, b.location.y, b.location.z);
   }
 });
@@ -107,12 +102,14 @@ world.afterEvents.playerPlaceBlock.subscribe(ev => {
 world.afterEvents.playerBreakBlock.subscribe(ev => {
   const b = ev.block;
   const type = ev.brokenBlockPermutation?.type?.id;
-  if (type === LIGHT_ID) {
+  if (type === BREAKER_BOX_ID) {
+    unregisterBreakerBox(b.dimension.id, b.location.x, b.location.y, b.location.z);
+  } else if (type === LIGHT_ID) {
     unregisterRoomLight(b.dimension.id, b.location.x, b.location.y, b.location.z);
   }
 });
 
-// --- Ticking ----------------------------------------------------------
+// --- Ticking ---------------------------------------------------------
 
 system.runInterval(() => {
   try { syncAllRoomLights(); } catch (_) {}

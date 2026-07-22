@@ -1,39 +1,31 @@
 import { world } from "@minecraft/server";
 import {
-  listRoomLights,
-  isRoomPowered, getPanelSnapshot,
+  listBreakerBoxes, listRoomLights,
+  isRoomPowered, getBreakerBoxSnapshot,
 } from "./state.js";
 import { pointInRoom } from "./blueprint.js";
 
-const PANEL_ENTITY_ID = "fnaf:breaker_panel";
-const SEARCH_RADIUS = 128;
+const SEARCH_RADIUS_SQ = 128 * 128;
 
-// For a given light location, find the nearest breaker panel entity in the
-// same dimension whose applied snapshot contains this point in a room.
-function findControllingPanel(dimensionId, x, y, z) {
-  const dim = world.getDimension(dimensionId);
-  let panels = [];
-  try {
-    panels = dim.getEntities({
-      type: PANEL_ENTITY_ID,
-      location: { x, y, z },
-      maxDistance: SEARCH_RADIUS,
-    });
-  } catch (_) { return null; }
-
+function findControllingBox(lightLoc) {
+  const { dimensionId, x, y, z } = lightLoc;
   let best = null;
   let bestD = Infinity;
-  for (const p of panels) {
-    const snap = getPanelSnapshot(p);
+  for (const bb of listBreakerBoxes()) {
+    if (bb.dimensionId !== dimensionId) continue;
+    const snap = getBreakerBoxSnapshot(bb.dimensionId, bb.x, bb.y, bb.z);
     if (!snap || !snap.rooms) continue;
-    let room = null;
+    let containingRoom = null;
     for (const r of snap.rooms) {
-      if (pointInRoom(dimensionId, x, y, z, r)) { room = r; break; }
+      if (pointInRoom(dimensionId, x, y, z, r)) { containingRoom = r; break; }
     }
-    if (!room) continue;
-    const dx = p.location.x - x, dy = p.location.y - y, dz = p.location.z - z;
+    if (!containingRoom) continue;
+    const dx = bb.x - x, dy = bb.y - y, dz = bb.z - z;
     const d = dx * dx + dy * dy + dz * dz;
-    if (d < bestD) { bestD = d; best = { panel: p, room }; }
+    if (d < bestD && d <= SEARCH_RADIUS_SQ) {
+      bestD = d;
+      best = { bb, room: containingRoom };
+    }
   }
   return best;
 }
@@ -46,9 +38,13 @@ export function syncAllRoomLights() {
     catch { continue; }
     if (!block || block.typeId !== "fnaf:room_light") continue;
 
-    const ctl = findControllingPanel(rl.dimensionId, rl.x, rl.y, rl.z);
+    const ctl = findControllingBox(rl);
     let powered = false;
-    if (ctl) powered = isRoomPowered(ctl.panel, ctl.room.id);
+    if (ctl) {
+      powered = isRoomPowered(
+        ctl.bb.dimensionId, ctl.bb.x, ctl.bb.y, ctl.bb.z, ctl.room.id
+      );
+    }
 
     const current = block.permutation.getState("fnaf:powered");
     if (current === powered) continue;

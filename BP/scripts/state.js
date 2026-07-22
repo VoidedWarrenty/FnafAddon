@@ -1,57 +1,15 @@
 import { world } from "@minecraft/server";
 
-// Per-entity storage on breaker panel entities. The entity is the identity;
-// its dynamic properties hold both the applied blueprint snapshot and the
-// current on/off state of each breaker.
+// Per-block storage. Two keyed world dynamic properties per box:
+//   fnaf:bb:<dim>:<x>,<y>,<z>       -> JSON { <roomId>: bool, ... }  (breaker on/off state)
+//   fnaf:bb_snap:<dim>:<x>,<y>,<z>  -> JSON { rooms: [...], sourceBpId, sourceName }
 //
-// Room lights still need a lightweight registry so the sync tick doesn't
-// scan chunks — that stays in world dynamic properties keyed by block loc.
+// Room lights also keep a location index so the sync tick doesn't scan chunks.
 
-const SNAP_KEY = "fnaf:snap";
-const STATE_KEY = "fnaf:state";
+const BB_PREFIX = "fnaf:bb:";
+const BB_SNAP_PREFIX = "fnaf:bb_snap:";
+const BB_INDEX_KEY = "fnaf:bb_index";
 const RL_INDEX_KEY = "fnaf:rl_index";
-
-// --- Panel entity storage ------------------------------------------------
-
-export function getPanelSnapshot(entity) {
-  try {
-    const raw = entity.getDynamicProperty(SNAP_KEY);
-    if (typeof raw !== "string") return null;
-    return JSON.parse(raw);
-  } catch { return null; }
-}
-
-export function setPanelSnapshot(entity, snapshot) {
-  entity.setDynamicProperty(SNAP_KEY, JSON.stringify(snapshot));
-}
-
-export function clearPanelSnapshot(entity) {
-  entity.setDynamicProperty(SNAP_KEY, undefined);
-}
-
-export function getPanelState(entity) {
-  try {
-    const raw = entity.getDynamicProperty(STATE_KEY);
-    if (typeof raw !== "string") return {};
-    return JSON.parse(raw);
-  } catch { return {}; }
-}
-
-export function setPanelState(entity, state) {
-  entity.setDynamicProperty(STATE_KEY, JSON.stringify(state));
-}
-
-export function isRoomPowered(entity, roomId) {
-  return getPanelState(entity)[String(roomId)] === true;
-}
-
-export function setRoomPowered(entity, roomId, powered) {
-  const s = getPanelState(entity);
-  s[String(roomId)] = !!powered;
-  setPanelState(entity, s);
-}
-
-// --- Room light registry -------------------------------------------------
 
 function locKey(dimensionId, x, y, z) {
   const dim = dimensionId.replace("minecraft:", "");
@@ -73,6 +31,64 @@ function readIndex(key) {
 function writeIndex(key, arr) {
   world.setDynamicProperty(key, JSON.stringify(arr));
 }
+
+// --- Breaker box registry -----------------------------------------------
+
+export function registerBreakerBox(dimensionId, x, y, z) {
+  const key = locKey(dimensionId, x, y, z);
+  const idx = readIndex(BB_INDEX_KEY);
+  if (!idx.includes(key)) {
+    idx.push(key);
+    writeIndex(BB_INDEX_KEY, idx);
+  }
+}
+
+export function unregisterBreakerBox(dimensionId, x, y, z) {
+  const key = locKey(dimensionId, x, y, z);
+  writeIndex(BB_INDEX_KEY, readIndex(BB_INDEX_KEY).filter(k => k !== key));
+  world.setDynamicProperty(BB_PREFIX + key, undefined);
+  world.setDynamicProperty(BB_SNAP_PREFIX + key, undefined);
+}
+
+export function listBreakerBoxes() {
+  return readIndex(BB_INDEX_KEY).map(parseLocKey);
+}
+
+// --- Breaker on/off state -----------------------------------------------
+
+export function getBreakerBoxState(dimensionId, x, y, z) {
+  const raw = world.getDynamicProperty(BB_PREFIX + locKey(dimensionId, x, y, z));
+  if (typeof raw !== "string") return {};
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+export function setBreakerBoxState(dimensionId, x, y, z, state) {
+  world.setDynamicProperty(BB_PREFIX + locKey(dimensionId, x, y, z), JSON.stringify(state));
+}
+
+export function isRoomPowered(dimensionId, x, y, z, roomId) {
+  return getBreakerBoxState(dimensionId, x, y, z)[String(roomId)] === true;
+}
+
+export function setRoomPowered(dimensionId, x, y, z, roomId, powered) {
+  const s = getBreakerBoxState(dimensionId, x, y, z);
+  s[String(roomId)] = !!powered;
+  setBreakerBoxState(dimensionId, x, y, z, s);
+}
+
+// --- Blueprint snapshot per box ----------------------------------------
+
+export function getBreakerBoxSnapshot(dimensionId, x, y, z) {
+  const raw = world.getDynamicProperty(BB_SNAP_PREFIX + locKey(dimensionId, x, y, z));
+  if (typeof raw !== "string") return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+export function setBreakerBoxSnapshot(dimensionId, x, y, z, snapshot) {
+  world.setDynamicProperty(BB_SNAP_PREFIX + locKey(dimensionId, x, y, z), JSON.stringify(snapshot));
+}
+
+// --- Room light registry -----------------------------------------------
 
 export function registerRoomLight(dimensionId, x, y, z) {
   const key = locKey(dimensionId, x, y, z);

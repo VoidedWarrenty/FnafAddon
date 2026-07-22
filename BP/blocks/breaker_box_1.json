@@ -1,0 +1,66 @@
+{
+  "format_version": "1.21.10",
+  "minecraft:block": {
+    "description": {
+      "identifier": "fnaf:breaker_box_1",
+      "menu_category": {
+        "category": "items",
+        "group": "itemGroup.name.miscellaneous"
+      },
+      "states": {
+        "fnaf:is_open": [false, true]
+      },
+      "traits": {
+        "minecraft:placement_direction": {
+          "enabled_states": ["minecraft:cardinal_direction"]
+        }
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.2 },
+      "minecraft:destructible_by_explosion": { "explosion_resistance": 10 },
+      "minecraft:map_color": "#2a2a2a",
+      "minecraft:geometry": "geometry.fnaf.breaker_panel_3d",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "fnaf_breaker_panel_block",
+          "render_method": "alpha_test"
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [-7, 0, 3.5],
+        "size":   [14, 18, 4.5]
+      },
+      "minecraft:selection_box": {
+        "origin": [-7, 0, 3.5],
+        "size":   [14, 18, 4.5]
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('fnaf:is_open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.fnaf.breaker_panel_3d_open"
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south'",
+        "components": {
+          "minecraft:transformation": { "rotation": [0, 180, 0] }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east'",
+        "components": {
+          "minecraft:transformation": { "rotation": [0, 90, 0] }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west'",
+        "components": {
+          "minecraft:transformation": { "rotation": [0, 270, 0] }
+        }
+      }
+    ]
+  }
+}
