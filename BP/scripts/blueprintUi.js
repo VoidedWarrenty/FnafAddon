@@ -59,7 +59,7 @@ export function openBlueprintEditor(player, bpId) {
   }
 
   const pickerState = getPickerState(player.id);
-  const map = renderMap(player.dimension.id, bp.rooms, { maxCols: 42, maxRows: 15 });
+  const map = renderMap(player.dimension.id, bp.rooms, { maxCols: 28, maxRows: 14 });
   const legend = bp.rooms.length ? renderRoomLegend(bp.rooms) : "§8§o(no rooms yet — tap §a✦ Add Room§8§o to begin)";
   const ribbon = pickerRibbon(bp, pickerState);
 
@@ -181,7 +181,7 @@ export function openRoomEditor(player, bpId, roomId) {
   const room = findRoom(bp, roomId);
   if (!room) return later(() => openBlueprintEditor(player, bpId));
 
-  const map = renderMap(player.dimension.id, [room], { maxCols: 42, maxRows: 12 });
+  const map = renderMap(player.dimension.id, [room], { maxCols: 28, maxRows: 12 });
   const floors = room.floors ?? [];
   const floorLines = floors.length === 0
     ? "§8§o(no floors yet — tap §a✦ Draw Floor§8§o to trace walls)"

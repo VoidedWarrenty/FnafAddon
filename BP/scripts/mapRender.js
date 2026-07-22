@@ -14,8 +14,11 @@ import { pointInPolygon, floorsBounds } from "./blueprint.js";
 // Two styles: "blueprint" (paper-blue interior + yellow doors) and
 // "panel" (mono schematic: white walls only, black background).
 
-const DEFAULT_MAX_COLS = 44;
-const DEFAULT_MAX_ROWS = 18;
+// Vanilla ActionForm dialog body is ~225 px wide; each '█' glyph in the
+// Bedrock font is ~7 px. That gives ~30 chars before the map spills past
+// the right side of the frame. 28 leaves headroom for the §9║ frame chars.
+const DEFAULT_MAX_COLS = 28;
+const DEFAULT_MAX_ROWS = 14;
 
 function collectFloors(rooms, dimensionId) {
   const out = [];

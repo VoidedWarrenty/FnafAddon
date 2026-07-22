@@ -24,13 +24,18 @@ function hashString(s) {
 }
 
 function fingerprintBlueprint(bp) {
-  // Serialize just the fields that affect the rendered map. Rename or
-  // reorder rooms/boxes → different fingerprint → forced recompute.
+  // Serialize the fields that affect the rendered map. Rename a room or
+  // change a polygon → different fingerprint → forced recompute.
   const canonical = {
     n: bp.name,
     r: bp.rooms.map(r => ({
       id: r.id, n: r.name,
-      b: r.boxes.map(b => [b.dim, b.x1, b.y1, b.z1, b.x2, b.y2, b.z2]),
+      f: (r.floors ?? []).map(f => ({
+        d: f.dim,
+        p: f.polygon.map(p => [p.x, p.z]),
+        y1: f.floorY, y2: f.ceilingY,
+        o: (f.openings ?? []).map(o => [o.segIdx, o.startBlock, o.endBlock]),
+      })),
     })),
   };
   return hashString(JSON.stringify(canonical));
@@ -77,7 +82,7 @@ export function openBreakerBox(player, block) {
   // Map string was computed and cached at blueprint-apply time. No world
   // scan happens here — the panel just displays what was frozen in.
   const cachedMap = snapshot.mapText ??
-    renderMap(dim, snapshot.rooms, { maxCols: 44, maxRows: 12, style: "panel" });
+    renderMap(dim, snapshot.rooms, { maxCols: 28, maxRows: 12, style: "panel" });
 
   const body = [
     panelHeader(bpName, `${powered}/${total} ON`),
@@ -144,7 +149,7 @@ export function applyBlueprintToBreakerBox(player, block, blueprint) {
   const mapText = renderMap(
     dim,
     blueprint.rooms,
-    { maxCols: 44, maxRows: 12, style: "panel" }
+    { maxCols: 28, maxRows: 12, style: "panel" }
   );
 
   const snapshot = {
