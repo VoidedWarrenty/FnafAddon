@@ -138,29 +138,66 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
   return { lines, cols, rows, minX, minZ, cellW, cellD };
 }
 
+// Two styles:
+//   "blueprint" — blue-paper look (default, used by the blueprint editor):
+//                  §f walls, §e doorways, §9 floor interior
+//   "panel"     — schematic look (used by the breaker box):
+//                  §f walls, everything else §0 black. Doorways become
+//                  natural gaps in the white outline.
+function styleFor(name) {
+  if (name === "panel") {
+    return {
+      wall: "§f", doorway: "§0", interior: "§0", exterior: "§0",
+      frame: "§7", showLegend: false,
+    };
+  }
+  return {
+    wall: "§f", doorway: "§e", interior: "§9", exterior: "§0",
+    frame: "§9", showLegend: true,
+  };
+}
+
 export function renderMap(dimensionId, rooms, options = {}) {
   const grid = renderMapGrid(dimensionId, rooms, options);
   if (!grid) return "§8§o(no boxes defined for this dimension)";
   const { lines, cols, minX, minZ, cellW, cellD } = grid;
   const w = cols;
+  const style = styleFor(options.style);
+
+  // Re-colorize each grid line into the target palette.
+  const paletteLines = lines.map(line => {
+    let out = "", current = "";
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === "§") {
+        const code = line[i + 1];
+        i++;
+        let target;
+        if (code === "f")      target = style.wall;
+        else if (code === "e") target = style.doorway;
+        else if (code === "9") target = style.interior;
+        else                    target = style.exterior;
+        if (target !== current) { out += target; current = target; }
+      } else {
+        out += ch;
+      }
+    }
+    return out;
+  });
 
   const compass = "§b   N §7▲";
   const dirBar = "§7W ◀ ─" + "─".repeat(Math.max(1, w - 12)) + "─ ▶ E";
-  const top    = "§9╔" + "═".repeat(w) + "╗";
-  const bottom = "§9╚" + "═".repeat(w) + "╝";
-  const framed = lines.map(l => `§9║${l}§9║`);
+  const top    = `${style.frame}╔` + "═".repeat(w) + "╗";
+  const bottom = `${style.frame}╚` + "═".repeat(w) + "╝";
+  const framed = paletteLines.map(l => `${style.frame}║${l}${style.frame}║`);
   const scale = `§8§oscale §7≈ §f${cellW}§7×§f${cellD}§7 blocks/cell   §8origin §7X§f${minX} §7Z§f${minZ}`;
-  const legendKey = "§f█§7 wall  §e█§7 doorway  §9█§7 floor";
 
-  return [
-    compass,
-    top,
-    ...framed,
-    bottom,
-    dirBar,
-    legendKey,
-    scale,
-  ].join("\n");
+  const parts = [compass, top, ...framed, bottom, dirBar];
+  if (style.showLegend) {
+    parts.push("§f█§7 wall  §e█§7 doorway  §9█§7 floor");
+  }
+  parts.push(scale);
+  return parts.join("\n");
 }
 
 export function renderRoomLegend(rooms) {

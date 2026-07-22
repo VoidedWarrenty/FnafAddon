@@ -65,7 +65,7 @@ export function openBreakerBox(player, block) {
   const total = snapshot.rooms.length;
   const bpName = snapshot.sourceName || "Unnamed";
 
-  const map = renderMap(dim, snapshot.rooms, { maxCols: 44, maxRows: 16 });
+  const map = renderMap(dim, snapshot.rooms, { maxCols: 44, maxRows: 16, style: "panel" });
   const legend = renderRoomLegend(snapshot.rooms);
   const body = [
     panelHeader(bpName, `${powered}/${total} ON`),
