@@ -14,7 +14,7 @@
     "anchor_from": "top_middle",
     "anchor_to": "top_middle",
     "bindings": [
-      { "binding_name": "#title_text" }
+      { "binding_name": "#title_text", "binding_type": "global" }
     ],
     "controls": [
       {
@@ -40,6 +40,7 @@
             {
               "binding_type": "view",
               "source_control_name": "long_form_dynamic_buttons_panel",
+              "resolve_sibling_scope": true,
               "source_property_name": "((#title_text - 'FNAFTILE:') = #title_text)",
               "target_property_name": "#visible"
             }
@@ -52,6 +53,7 @@
             {
               "binding_type": "view",
               "source_control_name": "long_form_dynamic_buttons_panel",
+              "resolve_sibling_scope": true,
               "source_property_name": "(not ((#title_text - 'FNAFTILE:') = #title_text))",
               "target_property_name": "#visible"
             }
