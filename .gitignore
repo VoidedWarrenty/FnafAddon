@@ -1,0 +1,4 @@
+dist/
+*.mcpack
+*.mcaddon
+.DS_Store
