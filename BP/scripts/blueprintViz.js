@@ -3,9 +3,10 @@ import { getBlueprint } from "./blueprint.js";
 import { readBlueprintId, BLUEPRINT_ID } from "./blueprintItem.js";
 import { getPickerState } from "./blueprintPicker.js";
 
-const OUTLINE_PARTICLE = "minecraft:endrod";
-const CORNER_PARTICLE = "minecraft:balloon_gas_particle";
-const RENDER_INTERVAL_TICKS = 10; // 0.5s — endrod lingers longer than that
+const WALL_PARTICLE = "minecraft:endrod";
+const DOORWAY_PARTICLE = "minecraft:balloon_gas_particle";
+const VERTEX_PARTICLE = "minecraft:balloon_gas_particle";
+const RENDER_INTERVAL_TICKS = 10;
 const MAX_DISTANCE_SQ = 96 * 96;
 
 function selectedSlot(player) {
@@ -20,45 +21,89 @@ function heldBlueprintStack(player) {
   return stack;
 }
 
-function drawEdge(dim, x1, y1, z1, x2, y2, z2) {
-  const dx = Math.sign(x2 - x1);
-  const dy = Math.sign(y2 - y1);
-  const dz = Math.sign(z2 - z1);
-  const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), Math.abs(z2 - z1));
-  let x = x1, y = y1, z = z1;
-  for (let i = 0; i <= steps; i++) {
+// Bresenham-style line stepping through integer XZ positions, sampled at
+// a fixed Y. Skips indexes flagged as openings, spawns a highlight
+// particle at endpoints.
+function drawEdgeParticles(dim, ax, az, bx, bz, y, openingSet) {
+  const dx = Math.abs(bx - ax), dz = Math.abs(bz - az);
+  const sx = ax < bx ? 1 : -1;
+  const sz = az < bz ? 1 : -1;
+  let err = dx - dz;
+  let x = ax, z = az;
+  let idx = 0;
+  while (true) {
+    const isOpening = openingSet && openingSet.has(idx);
     try {
-      dim.spawnParticle(OUTLINE_PARTICLE, { x: x + 0.5, y: y + 0.5, z: z + 0.5 });
-    } catch (_) { /* chunk unloaded */ }
-    x += dx; y += dy; z += dz;
+      dim.spawnParticle(
+        isOpening ? DOORWAY_PARTICLE : WALL_PARTICLE,
+        { x: x + 0.5, y: y + 0.5, z: z + 0.5 }
+      );
+    } catch (_) {}
+    if (x === bx && z === bz) break;
+    const e2 = 2 * err;
+    if (e2 > -dz) { err -= dz; x += sx; }
+    if (e2 < dx) { err += dx; z += sz; }
+    idx++;
   }
 }
 
-function drawBox(dim, box) {
-  const { x1, y1, z1, x2, y2, z2 } = box;
-  // Bottom rectangle
-  drawEdge(dim, x1, y1, z1, x2, y1, z1);
-  drawEdge(dim, x1, y1, z2, x2, y1, z2);
-  drawEdge(dim, x1, y1, z1, x1, y1, z2);
-  drawEdge(dim, x2, y1, z1, x2, y1, z2);
-  // Top rectangle
-  drawEdge(dim, x1, y2, z1, x2, y2, z1);
-  drawEdge(dim, x1, y2, z2, x2, y2, z2);
-  drawEdge(dim, x1, y2, z1, x1, y2, z2);
-  drawEdge(dim, x2, y2, z1, x2, y2, z2);
-  // Vertical edges
-  drawEdge(dim, x1, y1, z1, x1, y2, z1);
-  drawEdge(dim, x2, y1, z1, x2, y2, z1);
-  drawEdge(dim, x1, y1, z2, x1, y2, z2);
-  drawEdge(dim, x2, y1, z2, x2, y2, z2);
+// Build set of block indexes along a given edge that are inside any
+// opening range on that edge.
+function edgeOpeningSet(floor, segIdx) {
+  const s = new Set();
+  const opens = (floor.openings ?? []).filter(o => o.segIdx === segIdx);
+  for (const o of opens) {
+    for (let k = o.startBlock; k <= o.endBlock; k++) s.add(k);
+  }
+  return s;
 }
 
-function distSqToBoxCenter(loc, box) {
-  const cx = (box.x1 + box.x2) / 2;
-  const cy = (box.y1 + box.y2) / 2;
-  const cz = (box.z1 + box.z2) / 2;
-  const dx = cx - loc.x, dy = cy - loc.y, dz = cz - loc.z;
-  return dx * dx + dy * dy + dz * dz;
+function drawFloor(dim, floor) {
+  const poly = floor.polygon;
+  const n = poly.length;
+  const y1 = floor.floorY, y2 = floor.ceilingY;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % n];
+    const opens = edgeOpeningSet(floor, i);
+    drawEdgeParticles(dim, a.x, a.z, b.x, b.z, y1, opens);
+    drawEdgeParticles(dim, a.x, a.z, b.x, b.z, y2, opens);
+    // Vertical corner indicators
+    for (let y = y1; y <= y2; y += 2) {
+      try {
+        dim.spawnParticle(WALL_PARTICLE, { x: a.x + 0.5, y: y + 0.5, z: a.z + 0.5 });
+      } catch (_) {}
+    }
+  }
+}
+
+function distSqToPolygonCenter(loc, polygon) {
+  let cx = 0, cz = 0;
+  for (const p of polygon) { cx += p.x; cz += p.z; }
+  cx /= polygon.length; cz /= polygon.length;
+  const dx = cx - loc.x, dz = cz - loc.z;
+  return dx * dx + dz * dz;
+}
+
+// While the player is drawing a polygon, show the vertices they've placed
+// and a highlight on the origin (the block they'd tap to close).
+function drawPickerState(dim, ps) {
+  if (!ps.vertices || ps.vertices.length === 0) return;
+  const v0 = ps.vertices[0];
+  // Origin marker: multi-height column
+  for (let dy = 0; dy < 4; dy++) {
+    try {
+      dim.spawnParticle(DOORWAY_PARTICLE, {
+        x: v0.x + 0.5, y: v0.y + 0.5 + dy * 0.5, z: v0.z + 0.5,
+      });
+    } catch (_) {}
+  }
+  // Draw wall segments between placed vertices so far
+  for (let i = 0; i < ps.vertices.length - 1; i++) {
+    const a = ps.vertices[i];
+    const b = ps.vertices[i + 1];
+    drawEdgeParticles(dim, a.x, a.z, b.x, b.z, a.y, null);
+  }
 }
 
 export function startVisualization() {
@@ -75,24 +120,15 @@ export function startVisualization() {
       const loc = player.location;
 
       for (const room of bp.rooms) {
-        for (const box of room.boxes) {
-          if (box.dim !== dim.id) continue;
-          if (distSqToBoxCenter(loc, box) > MAX_DISTANCE_SQ) continue;
-          drawBox(dim, box);
+        for (const floor of room.floors ?? []) {
+          if (floor.dim !== dim.id) continue;
+          if (distSqToPolygonCenter(loc, floor.polygon) > MAX_DISTANCE_SQ) continue;
+          drawFloor(dim, floor);
         }
       }
 
       const ps = getPickerState(player.id);
-      if (ps && ps.firstCorner && ps.dim === dim.id) {
-        const c = ps.firstCorner;
-        for (let i = 0; i < 4; i++) {
-          try {
-            dim.spawnParticle(CORNER_PARTICLE, {
-              x: c.x + 0.5, y: c.y + 0.5 + i * 0.25, z: c.z + 0.5,
-            });
-          } catch (_) {}
-        }
-      }
+      if (ps && ps.dim === dim.id) drawPickerState(dim, ps);
     }
   }, RENDER_INTERVAL_TICKS);
 }

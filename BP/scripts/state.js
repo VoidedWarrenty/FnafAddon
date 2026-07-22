@@ -1,4 +1,5 @@
 import { world } from "@minecraft/server";
+import { migrateRoom } from "./blueprint.js";
 
 // Per-block storage. Two keyed world dynamic properties per box:
 //   fnaf:bb:<dim>:<x>,<y>,<z>       -> JSON { <roomId>: bool, ... }  (breaker on/off state)
@@ -81,7 +82,10 @@ export function setRoomPowered(dimensionId, x, y, z, roomId, powered) {
 export function getBreakerBoxSnapshot(dimensionId, x, y, z) {
   const raw = world.getDynamicProperty(BB_SNAP_PREFIX + locKey(dimensionId, x, y, z));
   if (typeof raw !== "string") return null;
-  try { return JSON.parse(raw); } catch { return null; }
+  let snap;
+  try { snap = JSON.parse(raw); } catch { return null; }
+  if (snap && Array.isArray(snap.rooms)) snap.rooms = snap.rooms.map(migrateRoom);
+  return snap;
 }
 
 export function setBreakerBoxSnapshot(dimensionId, x, y, z, snapshot) {

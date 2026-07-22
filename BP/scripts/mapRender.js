@@ -1,81 +1,111 @@
 import { world } from "@minecraft/server";
+import { pointInPolygon, floorsBounds } from "./blueprint.js";
 
-// Top-down ASCII map. Every cell is '█', color changes per classification.
+// Top-down ASCII map. Every cell is '█', color varies by classification.
 //
-// Cell classification (highest priority wins):
-//   wall     = a block on an AABB perimeter is solid → §f white
-//   doorway  = a block on an AABB perimeter is air   → §e yellow (opening)
-//   interior = point inside an AABB, not on perimeter → §9 blue (floor)
-//   exterior = point outside every AABB              → §0 black
+// Cells classify against the applied blueprint's polygon floors:
+//   wall      = cell sits ON a polygon edge AND the world block at
+//               that XZ (at floor+1..3) is solid — a real wall built
+//   doorway   = cell sits ON a polygon edge AND the world block is air
+//               OR the edge is marked as an explicit opening in blueprint
+//   interior  = cell is inside a polygon (any floor) but not on an edge
+//   exterior  = outside every floor's polygon
 //
-// Furniture, decorations, checkerboard floors, etc. inside a room DON'T
-// count as walls — walls are only what sits on the box perimeter the user
-// painted. That's what the AABB is *for*.
+// Two styles: "blueprint" (paper-blue interior + yellow doors) and
+// "panel" (mono schematic: white walls only, black background).
 
 const DEFAULT_MAX_COLS = 44;
 const DEFAULT_MAX_ROWS = 18;
 
-function unionBox(boxes) {
-  let minX = Infinity, maxX = -Infinity;
-  let minY = Infinity, maxY = -Infinity;
-  let minZ = Infinity, maxZ = -Infinity;
-  for (const b of boxes) {
-    if (b.x1 < minX) minX = b.x1;
-    if (b.x2 > maxX) maxX = b.x2;
-    if (b.y1 < minY) minY = b.y1;
-    if (b.y2 > maxY) maxY = b.y2;
-    if (b.z1 < minZ) minZ = b.z1;
-    if (b.z2 > maxZ) maxZ = b.z2;
-  }
-  return { minX, maxX, minY, maxY, minZ, maxZ };
-}
-
-function collectBoxes(rooms, dimensionId) {
+function collectFloors(rooms, dimensionId) {
   const out = [];
   for (const r of rooms) {
-    for (const b of r.boxes) {
-      if (b.dim === dimensionId) out.push(b);
+    for (const f of r.floors ?? []) {
+      if (f.dim === dimensionId) out.push({ room: r, floor: f });
     }
   }
   return out;
 }
 
-// Classify a single world point at (sx, sy, sz) against the box set.
-// Returns "wall" | "doorway" | "interior" | "exterior".
-function classifyPoint(dim, sx, sy, sz, boxes) {
-  let inRoom = false, onPerim = false;
-  for (const b of boxes) {
-    if (sy < b.y1 || sy > b.y2) continue;
-    const inX = sx >= b.x1 && sx <= b.x2;
-    const inZ = sz >= b.z1 && sz <= b.z2;
-    if (inX && inZ) {
-      inRoom = true;
-      if (sx === b.x1 || sx === b.x2 || sz === b.z1 || sz === b.z2) {
-        onPerim = true;
-        break;
+// Rasterize a polygon edge into world block XZ coords using Bresenham.
+// Returns array of {x, z}.
+function edgeBlocks(a, b) {
+  const out = [];
+  let x0 = Math.round(a.x), z0 = Math.round(a.z);
+  const x1 = Math.round(b.x), z1 = Math.round(b.z);
+  const dx = Math.abs(x1 - x0), dz = Math.abs(z1 - z0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sz = z0 < z1 ? 1 : -1;
+  let err = dx - dz;
+  while (true) {
+    out.push({ x: x0, z: z0 });
+    if (x0 === x1 && z0 === z1) break;
+    const e2 = 2 * err;
+    if (e2 > -dz) { err -= dz; x0 += sx; }
+    if (e2 < dx) { err += dx; z0 += sz; }
+  }
+  return out;
+}
+
+// For each floor, precompute:
+//   edgeSet: Set<"x,z"> of world XZ points that are on ANY edge of the polygon
+//   openingSet: Set<"x,z"> of world XZ points that are within an explicit opening
+function precomputeFloorEdges(floors) {
+  return floors.map(({ room, floor }) => {
+    const edgeSet = new Set();
+    const openingSet = new Set();
+    const n = floor.polygon.length;
+    for (let i = 0; i < n; i++) {
+      const a = floor.polygon[i];
+      const b = floor.polygon[(i + 1) % n];
+      const blocks = edgeBlocks(a, b);
+      for (const p of blocks) edgeSet.add(`${p.x},${p.z}`);
+      // Explicit openings marked on this edge
+      const opens = (floor.openings ?? []).filter(o => o.segIdx === i);
+      for (const o of opens) {
+        for (let k = o.startBlock; k <= o.endBlock && k < blocks.length; k++) {
+          const p = blocks[k];
+          openingSet.add(`${p.x},${p.z}`);
+        }
       }
     }
+    return { room, floor, edgeSet, openingSet };
+  });
+}
+
+function classifyPoint(dim, x, sy, z, floorInfos) {
+  let inRoom = false, onEdge = false, isExplicitOpening = false;
+  for (const fi of floorInfos) {
+    if (sy < fi.floor.floorY || sy > fi.floor.ceilingY) continue;
+    const key = `${x},${z}`;
+    if (fi.edgeSet.has(key)) {
+      onEdge = true;
+      if (fi.openingSet.has(key)) isExplicitOpening = true;
+    }
+    if (pointInPolygon(x, z, fi.floor.polygon)) inRoom = true;
   }
-  if (!inRoom) return "exterior";
-  if (!onPerim) return "interior";
-  let solid = false;
-  try {
-    const block = dim.getBlock({ x: sx, y: sy, z: sz });
-    if (block && block.typeId !== "minecraft:air") solid = true;
-  } catch (_) {}
-  return solid ? "wall" : "doorway";
+  if (!inRoom && !onEdge) return "exterior";
+  if (onEdge) {
+    if (isExplicitOpening) return "doorway";
+    // Check world block for actual wall vs door
+    let solid = false;
+    try {
+      const b = dim.getBlock({ x, y: sy, z });
+      if (b && b.typeId !== "minecraft:air") solid = true;
+    } catch (_) {}
+    return solid ? "wall" : "doorway";
+  }
+  return "interior";
 }
 
 const PRIORITY = { wall: 4, doorway: 3, interior: 2, exterior: 1 };
 
-// A downsampled cell picks the highest-priority classification of any point
-// it covers. Wall trumps doorway trumps interior trumps exterior.
-function classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, boxes) {
+function classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, floorInfos) {
   let best = "exterior";
   for (const sy of scanYs) {
     for (let sx = wx1; sx <= wx2; sx++) {
       for (let sz = wz1; sz <= wz2; sz++) {
-        const cls = classifyPoint(dim, sx, sy, sz, boxes);
+        const cls = classifyPoint(dim, sx, sy, sz, floorInfos);
         if (PRIORITY[cls] > PRIORITY[best]) best = cls;
         if (best === "wall") return "wall";
       }
@@ -87,11 +117,10 @@ function classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, boxes) {
 function renderMapGrid(dimensionId, rooms, options = {}) {
   const maxCols = options.maxCols ?? DEFAULT_MAX_COLS;
   const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
+  const floors = collectFloors(rooms, dimensionId);
+  if (floors.length === 0) return null;
 
-  const boxes = collectBoxes(rooms, dimensionId);
-  if (boxes.length === 0) return null;
-
-  const bb = unionBox(boxes);
+  const bb = floorsBounds(rooms, dimensionId);
   const padX = 1, padZ = 1;
   const minX = bb.minX - padX, maxX = bb.maxX + padX;
   const minZ = bb.minZ - padZ, maxZ = bb.maxZ + padZ;
@@ -103,18 +132,18 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
   const cols = Math.ceil(worldW / cellW);
   const rows = Math.ceil(worldD / cellD);
 
-  // Sample multiple Y levels above every box's floor so a wall at any
-  // height counts. Skip the top of the room to avoid ceiling blocks.
   const scanYs = [];
-  for (const b of boxes) {
+  for (const f of floors) {
     for (let k = 1; k <= 3; k++) {
-      const y = b.y1 + k;
-      if (y < b.y2 && !scanYs.includes(y)) scanYs.push(y);
+      const y = f.floor.floorY + k;
+      if (y < f.floor.ceilingY && !scanYs.includes(y)) scanYs.push(y);
     }
   }
   if (scanYs.length === 0) scanYs.push(Math.floor((bb.minY + bb.maxY) / 2));
 
   const dim = world.getDimension(dimensionId);
+  const floorInfos = precomputeFloorEdges(floors);
+
   const lines = [];
   for (let ry = 0; ry < rows; ry++) {
     let line = "";
@@ -124,7 +153,7 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
     for (let cx = 0; cx < cols; cx++) {
       const wx1 = minX + cx * cellW;
       const wx2 = Math.min(wx1 + cellW - 1, maxX);
-      const cls = classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, boxes);
+      const cls = classifyCell(dim, wx1, wx2, wz1, wz2, scanYs, floorInfos);
       let color;
       if (cls === "wall")          color = "§f";
       else if (cls === "doorway")  color = "§e";
@@ -138,16 +167,10 @@ function renderMapGrid(dimensionId, rooms, options = {}) {
   return { lines, cols, rows, minX, minZ, cellW, cellD };
 }
 
-// Two styles:
-//   "blueprint" — blue-paper look (default, used by the blueprint editor):
-//                  §f walls, §e doorways, §9 floor interior
-//   "panel"     — schematic look (used by the breaker box):
-//                  §f walls, everything else §0 black. Doorways become
-//                  natural gaps in the white outline.
 function styleFor(name) {
   if (name === "panel") {
     return {
-      wall: "§f", doorway: "§0", interior: "§0", exterior: "§0",
+      wall: "§f", doorway: "§e", interior: "§0", exterior: "§0",
       frame: "§7", showLegend: false,
     };
   }
@@ -159,12 +182,11 @@ function styleFor(name) {
 
 export function renderMap(dimensionId, rooms, options = {}) {
   const grid = renderMapGrid(dimensionId, rooms, options);
-  if (!grid) return "§8§o(no boxes defined for this dimension)";
+  if (!grid) return "§8§o(no floors defined for this dimension)";
   const { lines, cols, minX, minZ, cellW, cellD } = grid;
   const w = cols;
   const style = styleFor(options.style);
 
-  // Re-colorize each grid line into the target palette.
   const paletteLines = lines.map(line => {
     let out = "", current = "";
     for (let i = 0; i < line.length; i++) {
@@ -193,9 +215,7 @@ export function renderMap(dimensionId, rooms, options = {}) {
   const scale = `§8§oscale §7≈ §f${cellW}§7×§f${cellD}§7 blocks/cell   §8origin §7X§f${minX} §7Z§f${minZ}`;
 
   const parts = [compass, top, ...framed, bottom, dirBar];
-  if (style.showLegend) {
-    parts.push("§f█§7 wall  §e█§7 doorway  §9█§7 floor");
-  }
+  if (style.showLegend) parts.push("§f█§7 wall  §e█§7 doorway  §9█§7 floor");
   parts.push(scale);
   return parts.join("\n");
 }

@@ -2,17 +2,19 @@ import { system } from "@minecraft/server";
 import { ActionFormData, ModalFormData, MessageFormData } from "@minecraft/server-ui";
 import {
   getBlueprint, saveBlueprint, addRoom, findRoom, renameRoom, removeRoom,
-  removeBoxFromRoom,
+  removeFloorFromRoom,
 } from "./blueprint.js";
-import { startPicking, stopPicking, isPicking, getPickerState } from "./blueprintPicker.js";
+import { startPicking, stopPicking, getPickerState } from "./blueprintPicker.js";
 import { FNAF1_ROOMS } from "./rooms.js";
 import { rewriteHeldBlueprintName } from "./blueprintItem.js";
 import { renderMap, renderRoomLegend } from "./mapRender.js";
 
 function later(fn) { system.run(fn); }
 
-// A blueprint-sheet-styled frame around the header. Blue on top and bottom,
-// tape/tack pixels in the corners, name banner in the middle.
+function totalFloors(bp) {
+  return bp.rooms.reduce((n, r) => n + (r.floors?.length ?? 0), 0);
+}
+
 function blueprintHeader(bp) {
   return [
     "§9┏━━ §b§lB L U E P R I N T §r§9━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
@@ -22,9 +24,7 @@ function blueprintHeader(bp) {
 }
 
 function blueprintFooter(bp) {
-  const roomN = bp.rooms.length;
-  const boxN = bp.rooms.reduce((n, r) => n + r.boxes.length, 0);
-  const summary = `§7rooms §f${roomN} §8· §7boxes §f${boxN}`;
+  const summary = `§7rooms §f${bp.rooms.length} §8· §7floors §f${totalFloors(bp)}`;
   return [
     "§9┢━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┪",
     `§9┃ §8· ${summary.padEnd(38, " ")}§9┃`,
@@ -32,13 +32,23 @@ function blueprintFooter(bp) {
   ].join("\n");
 }
 
-function pickerRibbon(bp, pickerState) {
-  if (!pickerState) return null;
-  const room = findRoom(bp, pickerState.roomId);
-  const step = pickerState.firstCorner
-    ? `§ftap §b2nd §fcorner   §8· §71st at §f(${pickerState.firstCorner.x},${pickerState.firstCorner.y},${pickerState.firstCorner.z})`
-    : `§ftap §b1st §fcorner`;
-  return `§e▶ PICKING §7─ §f${room?.name ?? "?"} §7─ ${step}`;
+function pickerRibbon(bp, ps) {
+  if (!ps) return null;
+  const room = findRoom(bp, ps.roomId);
+  const name = room?.name ?? "?";
+  if (ps.phase === "vertices") {
+    const count = ps.vertices.length;
+    const closeHint = count >= 3 ? " §8· sneak-tap to close" : "";
+    return `§e▶ DRAWING §7─ §f${name} §7─ §fvertex ${count + 1}${closeHint}`;
+  }
+  if (ps.phase === "ceiling") {
+    return `§e▶ CEILING §7─ §f${name} §7─ §ftap a ceiling block`;
+  }
+  if (ps.phase === "openings") {
+    const pend = ps.pendingOpeningStart ? " §8· 1st opening tap set" : "";
+    return `§e▶ OPENINGS §7─ §f${name} §7─ §fsneak-tap pairs${pend} §8· tap anywhere to finish`;
+  }
+  return null;
 }
 
 export function openBlueprintEditor(player, bpId) {
@@ -50,7 +60,7 @@ export function openBlueprintEditor(player, bpId) {
 
   const pickerState = getPickerState(player.id);
   const map = renderMap(player.dimension.id, bp.rooms, { maxCols: 42, maxRows: 15 });
-  const legend = bp.rooms.length ? renderRoomLegend(bp.rooms) : "§8§o(no rooms yet — tap §a+ Add Room§8§o to begin)";
+  const legend = bp.rooms.length ? renderRoomLegend(bp.rooms) : "§8§o(no rooms yet — tap §a✦ Add Room§8§o to begin)";
   const ribbon = pickerRibbon(bp, pickerState);
 
   const body = [
@@ -70,36 +80,34 @@ export function openBlueprintEditor(player, bpId) {
     .body(body);
 
   const buttons = [];
-  // Tools first
-  form.button("§a✦ Add Room");                     buttons.push({ kind: "add_room" });
-  form.button("§bRename Blueprint");                buttons.push({ kind: "rename_bp" });
-  form.button("§eLoad FNAF 1 Room Preset");         buttons.push({ kind: "preset_fnaf1" });
+  form.button("§a✦ Add Room");                buttons.push({ kind: "add_room" });
+  form.button("§bRename Blueprint");           buttons.push({ kind: "rename_bp" });
+  form.button("§eLoad FNAF 1 Room Preset");    buttons.push({ kind: "preset_fnaf1" });
   if (pickerState) {
-    form.button("§c⊘ Cancel Corner Picking");
+    form.button("§c⊘ Cancel Drawing");
     buttons.push({ kind: "cancel_picking" });
   }
-  form.button("§4⚠ Delete All Rooms");             buttons.push({ kind: "clear_rooms" });
-  form.button("§8✖ Close");                          buttons.push({ kind: "close" });
-  // Room list
+  form.button("§4⚠ Delete All Rooms");        buttons.push({ kind: "clear_rooms" });
+  form.button("§8✖ Close");                     buttons.push({ kind: "close" });
   for (let i = 0; i < bp.rooms.length; i++) {
     const r = bp.rooms[i];
-    const boxCount = r.boxes.length;
-    form.button(`§b#${String(i + 1).padStart(2, " ")}§r §8│ §f${r.name}  §8(${boxCount} ${boxCount === 1 ? "box" : "boxes"})`);
+    const floors = r.floors?.length ?? 0;
+    form.button(`§b#${String(i + 1).padStart(2, " ")}§r §8│ §f${r.name}  §8(${floors} ${floors === 1 ? "floor" : "floors"})`);
     buttons.push({ kind: "room", id: r.id });
   }
 
   form.show(player).then(res => {
     if (res.canceled || res.selection === undefined) return;
-    const choice = buttons[res.selection];
-    if (!choice || choice.kind === "close") return;
-    switch (choice.kind) {
-      case "room": return later(() => openRoomEditor(player, bpId, choice.id));
+    const c = buttons[res.selection];
+    if (!c || c.kind === "close") return;
+    switch (c.kind) {
+      case "room": return later(() => openRoomEditor(player, bpId, c.id));
       case "add_room": return later(() => promptAddRoom(player, bpId));
       case "rename_bp": return later(() => promptRenameBlueprint(player, bpId));
       case "preset_fnaf1": return later(() => loadFnaf1Preset(player, bpId));
       case "cancel_picking":
         stopPicking(player.id);
-        player.onScreenDisplay.setActionBar("§7Corner picking cancelled");
+        player.onScreenDisplay.setActionBar("§7Drawing cancelled");
         return later(() => openBlueprintEditor(player, bpId));
       case "clear_rooms": return later(() => confirmClearRooms(player, bpId));
     }
@@ -107,33 +115,33 @@ export function openBlueprintEditor(player, bpId) {
 }
 
 function promptAddRoom(player, bpId) {
-  const form = new ModalFormData()
+  new ModalFormData()
     .title("§b✦ Add Room")
-    .textField("§7Room name", "e.g. Show Stage", "");
-  form.show(player).then(res => {
-    if (res.canceled || !res.formValues) return later(() => openBlueprintEditor(player, bpId));
-    const name = String(res.formValues[0] ?? "").trim();
-    const bp = getBlueprint(bpId);
-    if (!bp) return;
-    const rid = addRoom(bp, name || `Room ${bp.rooms.length + 1}`);
-    later(() => openRoomEditor(player, bpId, rid));
-  }).catch(() => {});
+    .textField("§7Room name", "e.g. Show Stage", "")
+    .show(player).then(res => {
+      if (res.canceled || !res.formValues) return later(() => openBlueprintEditor(player, bpId));
+      const name = String(res.formValues[0] ?? "").trim();
+      const bp = getBlueprint(bpId);
+      if (!bp) return;
+      const rid = addRoom(bp, name || `Room ${bp.rooms.length + 1}`);
+      later(() => openRoomEditor(player, bpId, rid));
+    }).catch(() => {});
 }
 
 function promptRenameBlueprint(player, bpId) {
   const bp = getBlueprint(bpId);
   if (!bp) return;
-  const form = new ModalFormData()
+  new ModalFormData()
     .title("§b✎ Rename Blueprint")
-    .textField("§7Blueprint name", "e.g. Freddy Fazbear's Pizza", bp.name);
-  form.show(player).then(res => {
-    if (res.canceled || !res.formValues) return later(() => openBlueprintEditor(player, bpId));
-    const newName = String(res.formValues[0] ?? "").trim() || bp.name;
-    bp.name = newName;
-    saveBlueprint(bp);
-    rewriteHeldBlueprintName(player, bpId, newName);
-    later(() => openBlueprintEditor(player, bpId));
-  }).catch(() => {});
+    .textField("§7Blueprint name", "e.g. Freddy Fazbear's Pizza", bp.name)
+    .show(player).then(res => {
+      if (res.canceled || !res.formValues) return later(() => openBlueprintEditor(player, bpId));
+      const newName = String(res.formValues[0] ?? "").trim() || bp.name;
+      bp.name = newName;
+      saveBlueprint(bp);
+      rewriteHeldBlueprintName(player, bpId, newName);
+      later(() => openBlueprintEditor(player, bpId));
+    }).catch(() => {});
 }
 
 function loadFnaf1Preset(player, bpId) {
@@ -153,7 +161,7 @@ function loadFnaf1Preset(player, bpId) {
 function confirmClearRooms(player, bpId) {
   new MessageFormData()
     .title("§c⚠ Delete All Rooms?")
-    .body("§7This clears every room and box from the blueprint.\n§cThis cannot be undone.")
+    .body("§7This clears every room and floor from the blueprint.\n§cThis cannot be undone.")
     .button1("§4⚠ Delete All")
     .button2("§7Cancel")
     .show(player).then(res => {
@@ -174,11 +182,14 @@ export function openRoomEditor(player, bpId, roomId) {
   if (!room) return later(() => openBlueprintEditor(player, bpId));
 
   const map = renderMap(player.dimension.id, [room], { maxCols: 42, maxRows: 12 });
-  const boxLines = room.boxes.length === 0
-    ? "§8§o(no boxes yet — tap §a✦ Add Box§8§o and plant two corners)"
-    : room.boxes.map((b, i) =>
-        `§b#${String(i + 1).padStart(2, " ")}§r  §7(§f${b.x1}§7,§f${b.y1}§7,§f${b.z1}§7)§8 → §7(§f${b.x2}§7,§f${b.y2}§7,§f${b.z2}§7)`
-      ).join("\n");
+  const floors = room.floors ?? [];
+  const floorLines = floors.length === 0
+    ? "§8§o(no floors yet — tap §a✦ Draw Floor§8§o to trace walls)"
+    : floors.map((f, i) => {
+        const v = f.polygon.length;
+        const openings = f.openings?.length ?? 0;
+        return `§b#${String(i + 1).padStart(2, " ")}§r §7verts §f${v} §8· §7Y §f${f.floorY}§8..§f${f.ceilingY} §8· §7openings §f${openings}`;
+      }).join("\n");
 
   const body = [
     "§9┏━━ §b§lR O O M §r§9━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
@@ -187,8 +198,8 @@ export function openRoomEditor(player, bpId, roomId) {
     "",
     map,
     "",
-    `§8§lBOXES §7(${room.boxes.length})`,
-    boxLines,
+    `§8§lFLOORS §7(${floors.length})`,
+    floorLines,
     "",
     "§9┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
   ].join("\n");
@@ -198,13 +209,13 @@ export function openRoomEditor(player, bpId, roomId) {
     .body(body);
 
   const buttons = [];
-  form.button("§a✦ Add Box");          buttons.push({ kind: "add_box" });
-  form.button("§bRename Room");         buttons.push({ kind: "rename" });
-  form.button("§4⚠ Delete Room");       buttons.push({ kind: "delete" });
-  form.button("§7← Back");              buttons.push({ kind: "back" });
-  for (let i = 0; i < room.boxes.length; i++) {
-    form.button(`§c✖ Delete Box #${i + 1}`);
-    buttons.push({ kind: "del_box", index: i });
+  form.button("§a✦ Draw Floor");      buttons.push({ kind: "add_floor" });
+  form.button("§bRename Room");        buttons.push({ kind: "rename" });
+  form.button("§4⚠ Delete Room");      buttons.push({ kind: "delete" });
+  form.button("§7← Back");             buttons.push({ kind: "back" });
+  for (let i = 0; i < floors.length; i++) {
+    form.button(`§c✖ Delete Floor #${i + 1}`);
+    buttons.push({ kind: "del_floor", index: i });
   }
 
   form.show(player).then(res => {
@@ -212,12 +223,12 @@ export function openRoomEditor(player, bpId, roomId) {
     const c = buttons[res.selection];
     if (!c) return;
     switch (c.kind) {
-      case "add_box":
+      case "add_floor":
         startPicking(player.id, bpId, roomId, player.dimension.id);
-        player.onScreenDisplay.setActionBar("§e▶ Tap the §b1st§e corner in the world (holding the blueprint).");
+        player.onScreenDisplay.setActionBar("§e▶ Tap 1st corner in the world (holding blueprint). Sneak-tap any block after 3+ corners to close.");
         return;
-      case "del_box":
-        removeBoxFromRoom(bp, roomId, c.index);
+      case "del_floor":
+        removeFloorFromRoom(bp, roomId, c.index);
         return later(() => openRoomEditor(player, bpId, roomId));
       case "rename": return later(() => promptRenameRoom(player, bpId, roomId));
       case "delete":

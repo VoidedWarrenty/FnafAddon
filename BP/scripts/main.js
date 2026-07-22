@@ -45,7 +45,8 @@ world.beforeEvents.itemUseOn.subscribe(ev => {
     return;
   }
 
-  system.run(() => handleBlueprintUseOn(player, itemStack, block));
+  const isSneaking = !!player.isSneaking;
+  system.run(() => handleBlueprintUseOn(player, itemStack, block, isSneaking));
 });
 
 world.beforeEvents.itemUse.subscribe(ev => {

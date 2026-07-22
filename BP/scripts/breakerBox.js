@@ -156,7 +156,13 @@ export function applyBlueprintToBreakerBox(player, block, blueprint) {
     rooms: blueprint.rooms.map(r => ({
       id: r.id,
       name: r.name,
-      boxes: r.boxes.map(b => ({ ...b })),
+      floors: (r.floors ?? []).map(f => ({
+        dim: f.dim,
+        polygon: f.polygon.map(p => ({ x: p.x, z: p.z })),
+        floorY: f.floorY,
+        ceilingY: f.ceilingY,
+        openings: (f.openings ?? []).map(o => ({ ...o })),
+      })),
     })),
   };
   setBreakerBoxSnapshot(dim, x, y, z, snapshot);

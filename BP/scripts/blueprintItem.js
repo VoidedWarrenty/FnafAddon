@@ -1,12 +1,16 @@
 import { world, system } from "@minecraft/server";
 import {
-  newBlueprintId, createBlueprint, getBlueprint, addBoxToRoom, normalizeBox, findRoom,
+  newBlueprintId, createBlueprint, getBlueprint, addFloorToRoom, findRoom,
+  closestEdgeToPoint,
 } from "./blueprint.js";
-import { recordCorner, isPicking } from "./blueprintPicker.js";
+import {
+  isPicking, getPickerState,
+  recordTap, recordSneakTap, pushOpeningTap, finalize,
+} from "./blueprintPicker.js";
 import { openBlueprintEditor } from "./blueprintUi.js";
 
 export const BLUEPRINT_ID = "fnaf:blueprint";
-const LORE_PREFIX = "§8bp:"; // dark-gray, near-invisible tag
+const LORE_PREFIX = "§8bp:";
 
 function selectedSlot(player) {
   return player.selectedSlotIndex ?? player.selectedSlot ?? 0;
@@ -25,9 +29,7 @@ function writeMainHand(player, stack) {
 export function readBlueprintId(itemStack) {
   if (!itemStack) return null;
   const lore = itemStack.getLore();
-  for (const l of lore) {
-    if (l.startsWith(LORE_PREFIX)) return l.slice(LORE_PREFIX.length);
-  }
+  for (const l of lore) if (l.startsWith(LORE_PREFIX)) return l.slice(LORE_PREFIX.length);
   return null;
 }
 
@@ -48,14 +50,11 @@ function stampStack(itemStack, id, bpName) {
   return stack;
 }
 
-// If the currently held blueprint has no UUID yet, create one and stamp it.
-// Returns the (possibly new) blueprint and the stack now in-hand.
 export function ensureBlueprint(player, itemStack) {
   let id = readBlueprintId(itemStack);
   if (id) {
     const bp = getBlueprint(id);
     if (bp) return { bp, stack: itemStack };
-    // ID present but registry missing (world wipe?): treat as blank.
   }
   id = newBlueprintId();
   const bp = createBlueprint(id, "Untitled");
@@ -64,7 +63,6 @@ export function ensureBlueprint(player, itemStack) {
   return { bp, stack };
 }
 
-// After a blueprint is renamed, refresh the name shown on the item in hand.
 export function rewriteHeldBlueprintName(player, bpId, newName) {
   const inv = getInventoryContainer(player);
   if (!inv) return;
@@ -77,42 +75,120 @@ export function rewriteHeldBlueprintName(player, bpId, newName) {
   inv.setItem(slot, updated);
 }
 
-// Called when the player uses a blueprint on a block. Returns true if
-// this handler consumed the interaction and no editor should open.
-export function handleBlueprintUseOn(player, itemStack, block) {
-  const { bp, stack } = ensureBlueprint(player, itemStack);
-
-  // Picker mode wins if active: plant a corner.
-  if (isPicking(player.id)) {
-    const { x, y, z } = block.location;
-    const result = recordCorner(player.id, x, y, z);
-    if (!result) return true;
-    if (result.kind === "first") {
-      player.onScreenDisplay.setActionBar(
-        `§eFirst corner set at §f(${x},${y},${z})§e. Tap the opposite corner.`
-      );
-      return true;
-    }
-    // second corner
-    const room = findRoom(bp, result.roomId);
-    if (!room) {
-      player.onScreenDisplay.setActionBar("§cRoom no longer exists");
-      return true;
-    }
-    const box = normalizeBox(result.box.first, result.box.second, result.dim);
-    addBoxToRoom(bp, room.id, box);
-    player.onScreenDisplay.setActionBar(
-      `§aBox added to §f${room.name} §7(${box.x1},${box.y1},${box.z1})→(${box.x2},${box.y2},${box.z2})`
-    );
-    return true;
-  }
-
-  // Otherwise: open the editor.
-  system.run(() => openBlueprintEditor(player, bp.id));
-  return true;
+// Finalize an active pick if we're in openings phase. Called by "finish"
+// events from the picker.
+function saveActivePick(player) {
+  const ps = getPickerState(player.id);
+  if (!ps) return;
+  const result = finalize(player.id);
+  if (!result) return;
+  const bp = getBlueprint(result.bpId);
+  if (!bp) return;
+  const room = findRoom(bp, result.roomId);
+  if (!room) return;
+  addFloorToRoom(bp, result.roomId, result.floor);
+  player.onScreenDisplay.setActionBar(
+    `§a✔ Floor saved §7- §f${room.name} §8(${result.floor.polygon.length} verts, Y ${result.floor.floorY}..${result.floor.ceilingY}, ${result.floor.openings.length} openings)`
+  );
+  system.run(() => openBlueprintEditor(player, result.bpId));
 }
 
-// Right-click in air with a blueprint (no block target) -> open editor.
+// Blueprint used on a block (normal or sneak). The caller has already
+// pulled ev.isSneaking; we branch on it here.
+export function handleBlueprintUseOn(player, itemStack, block, isSneaking) {
+  const { bp } = ensureBlueprint(player, itemStack);
+  const { x, y, z } = block.location;
+
+  if (!isPicking(player.id)) {
+    // Not picking: normal tap on a block opens the editor.
+    // Sneak tap without an active pick: also opens the editor (safe).
+    system.run(() => openBlueprintEditor(player, bp.id));
+    return;
+  }
+
+  const ps = getPickerState(player.id);
+
+  if (isSneaking) {
+    const r = recordSneakTap(player.id, x, y, z);
+    if (!r) return;
+
+    switch (r.kind) {
+      case "too_few_vertices":
+        player.onScreenDisplay.setActionBar(
+          `§cNeed at least 3 vertices to close (${r.count} placed).`
+        );
+        return;
+      case "closed":
+        player.onScreenDisplay.setActionBar(
+          `§a✔ Polygon closed. §fTap a ceiling block to set room height.`
+        );
+        return;
+      case "ceiling_set":
+        player.onScreenDisplay.setActionBar(
+          `§7Ceiling Y = §f${r.y}§7. §eSneak-tap pairs of wall blocks to mark openings, or tap anywhere to finish.`
+        );
+        return;
+      case "opening_tap": {
+        // Resolve the wall segment the sneak-tap is closest to.
+        const psNow = getPickerState(player.id);
+        if (!psNow) return;
+        // Build a temp polygon from the placed vertices to find the edge.
+        const polygon = psNow.vertices.map(v => ({ x: v.x, z: v.z }));
+        const edge = closestEdgeToPoint(polygon, x, z);
+        if (!edge) return;
+        const push = pushOpeningTap(player.id, edge.segIdx, edge.blockIdx);
+        if (!push) return;
+        if (push.kind === "opening_start") {
+          player.onScreenDisplay.setActionBar(
+            `§e▶ Opening start marked on edge #${edge.segIdx + 1}. Sneak-tap the other flanking block.`
+          );
+        } else if (push.kind === "opening_moved_segment") {
+          player.onScreenDisplay.setActionBar(
+            `§eStart moved to edge #${edge.segIdx + 1}. Sneak-tap the other flanking block on this edge.`
+          );
+        } else if (push.kind === "opening_done") {
+          player.onScreenDisplay.setActionBar(
+            `§a✔ Opening on edge #${push.segIdx + 1}, blocks ${push.startBlock}..${push.endBlock}. Add more or tap anywhere to finish.`
+          );
+        } else if (push.kind === "opening_too_small") {
+          player.onScreenDisplay.setActionBar(
+            `§cThose blocks are adjacent — no interior to open.`
+          );
+        }
+        return;
+      }
+    }
+    return;
+  }
+
+  // Non-sneak tap
+  const r = recordTap(player.id, x, y, z);
+  if (!r) return;
+
+  switch (r.kind) {
+    case "vertex":
+      player.onScreenDisplay.setActionBar(
+        r.first
+          ? `§e▶ Vertex 1 at §f(${x},${y},${z})§e. Origin marked — tap more corners.`
+          : `§e▶ Vertex ${r.count} at §f(${x},${y},${z})§e. Tap next or sneak-tap to close.`
+      );
+      return;
+    case "closed":
+      player.onScreenDisplay.setActionBar(
+        `§a✔ Polygon closed. §fTap a ceiling block to set room height.`
+      );
+      return;
+    case "ceiling_set":
+      player.onScreenDisplay.setActionBar(
+        `§7Ceiling Y = §f${r.y}§7. §eSneak-tap pairs of wall blocks for openings, or tap anywhere to finish.`
+      );
+      return;
+    case "finish_request":
+      saveActivePick(player);
+      return;
+  }
+}
+
 export function handleBlueprintUseAir(player, itemStack) {
   const { bp } = ensureBlueprint(player, itemStack);
   system.run(() => openBlueprintEditor(player, bp.id));
