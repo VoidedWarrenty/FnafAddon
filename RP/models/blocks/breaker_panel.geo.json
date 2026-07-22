@@ -188,7 +188,7 @@
 					"name": "door",
 					"parent": "housing",
 					"pivot": [-7, 9, 4],
-					"rotation": [0, -90, 0],
+					"rotation": [0, 90, 0],
 					"cubes": [
 						{
 							"origin": [-7, 0, 3.5],
