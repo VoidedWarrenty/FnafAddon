@@ -132,87 +132,78 @@ def breaker_panel_side_16():
 
 
 def breaker_panel_entity_64():
-    """64x64 texture matching the breaker_panel.geo.json UV layout.
+    """64x64 texture matching the multi-cube breaker_panel.geo.json UV layout.
 
-    Housing (rectangular electrical box) uses UV rows 0..18.
-    Door uses UV rows 18..36.
-
-    - Housing north (front interior, visible when door open): (0,0)-(14,18)
-      Painted with a grid of breaker switch slots.
-    - Housing south (back, against wall):                     (14,0)-(28,18)
-    - Housing east:                                            (28,0)-(32,18)
-    - Housing west:                                            (32,0)-(36,18)
-    - Housing up:                                              (36,0)-(50,4)
-    - Housing down:                                            (36,4)-(50,8)
-    - Door north (outside of door, visible when closed):      (0,18)-(14,36)
-    - Door south (inside of door, room-list sticker):         (14,18)-(28,36)
+    - Back plate (10x14x1, recessed switch board):
+        north (switches): (0,0)-(10,14)
+        south:            (10,0)-(20,14)
+        east/west/up/down: strip along y=14..15 and x=20..22
+    - Frame top/bottom/left/right (rim around the back plate):
+        packed into (22,0)-(60,22)
+    - Door (14x18x0.5):
+        north (outside):  (0,22)-(14,40)
+        south (inside):   (14,22)-(28,40)
     """
-    px = blank(64, 64, (0, 0, 0))  # start transparent-ish black
+    px = blank(64, 64, (25, 25, 28))
 
-    metal_light = (170, 170, 175, 255)
-    metal_dark = (110, 110, 115, 255)
-    metal_shadow = (60, 60, 65, 255)
-    slot_dark = (30, 30, 32, 255)
-    switch_body = (215, 215, 210, 255)
+    metal_light = (170, 170, 175)
+    metal_dark  = (110, 110, 115)
+    metal_deep  = (55, 55, 60)
 
-    # --- Housing north (front interior, visible when door swings open) ---
-    # Base
-    rect(px, 0, 0, 14, 18, (140, 140, 145))
-    # Inner darker rim
+    # --- Back plate north face (breaker switch board) ---
+    rect(px, 0, 0, 10, 14, (140, 140, 145))
+    for i in range(10):
+        px[0][i] = px[13][i] = (metal_deep + (255,))
     for i in range(14):
-        px[0][i] = metal_shadow
-        px[17][i] = metal_shadow
-    for i in range(18):
-        px[i][0] = metal_shadow
-        px[i][13] = metal_shadow
-    # 2 columns of 6 breaker slots (each 3 wide x 2 tall, 2px space)
+        px[i][0] = px[i][9] = (metal_deep + (255,))
+    # 2 columns x 6 rows of tiny breaker switches
     for row in range(6):
         for col in range(2):
-            sx = 2 + col * 6
-            sy = 3 + row * 2
-            rect(px, sx, sy, 4, 1, (40, 40, 42))
-            # switch cap
-            px[sy][sx + 1] = switch_body
-            px[sy][sx + 2] = switch_body
-    # "MAIN 200A" strip at top
-    rect(px, 4, 1, 6, 1, (200, 200, 200))
+            sx = 1 + col * 4
+            sy = 2 + row * 2
+            rect(px, sx, sy, 3, 1, (215, 215, 210))
+            px[sy][sx + 1] = (35, 35, 38, 255)
+    # "MAIN" strip
+    rect(px, 3, 0, 4, 1, (210, 210, 210))
 
-    # --- Housing south (back) ---
-    rect(px, 14, 0, 14, 18, (95, 95, 100))
+    # --- Back plate south (against wall) ---
+    rect(px, 10, 0, 10, 14, metal_deep)
 
-    # --- Housing east/west (sides) ---
-    rect(px, 28, 0, 4, 18, metal_dark[:3])
-    rect(px, 32, 0, 4, 18, metal_dark[:3])
+    # --- Back plate east/west/up/down thin strips ---
+    rect(px, 20, 0, 1, 14, metal_dark)
+    rect(px, 21, 0, 1, 14, metal_dark)
+    rect(px, 0, 14, 10, 1, metal_deep)
+    rect(px, 10, 14, 10, 1, metal_deep)
 
-    # --- Housing top/bottom ---
-    rect(px, 36, 0, 14, 4, metal_dark[:3])
-    rect(px, 36, 4, 14, 4, metal_dark[:3])
+    # --- Frame rims (fill a big dark-metal patch and let the individual
+    # cube UVs sample from it) ---
+    rect(px, 22, 0, 42, 22, metal_dark)
+    # Add subtle screws at corners of the front-visible face regions
+    for (x, y) in [(23, 1), (34, 1), (23, 5), (34, 5)]:
+        px[y][x] = (metal_light + (255,))
 
-    # --- Door north (outside; visible when closed) ---
-    # Metal door with a small vent/label near top
-    rect(px, 0, 18, 14, 18, (155, 155, 160))
-    # Border rivets
+    # --- Door north face (outside of the door, seen when closed) ---
+    rect(px, 0, 22, 14, 18, (155, 155, 160))
     for (dx, dy) in [(0, 0), (13, 0), (0, 17), (13, 17)]:
-        px[18 + dy][dx] = (70, 70, 75, 255)
-    # Handle on the right side, vertical
-    rect(px, 11, 24, 1, 6, metal_shadow[:3])
-    # DANGER sticker on top-left
-    rect(px, 1, 19, 8, 3, (170, 40, 40))
-    rect(px, 1, 20, 8, 1, (240, 220, 220))
+        px[22 + dy][dx] = (70, 70, 75, 255)
+    # Handle
+    rect(px, 11, 28, 1, 6, metal_deep)
+    # DANGER sticker
+    rect(px, 1, 23, 8, 3, (170, 40, 40))
+    rect(px, 1, 24, 8, 1, (240, 220, 220))
 
-    # --- Door south (inside; the room-list sticker area) ---
-    rect(px, 14, 18, 14, 18, (245, 240, 225))     # paper
-    # DANGER banner at top
-    rect(px, 15, 19, 12, 2, (170, 40, 40))
-    # rules lines below (fake writing)
+    # --- Door south face (inside — room list sticker) ---
+    rect(px, 14, 22, 14, 18, (245, 240, 225))
+    rect(px, 15, 23, 12, 2, (170, 40, 40))
     for i in range(7):
-        y = 22 + i * 2
+        y = 26 + i * 2
         rect(px, 15, y, 12, 1, (55, 55, 60))
 
-    # --- Door thin edges (top/bottom/east/west of door cube) ---
-    rect(px, 28, 18, 2, 18, metal_dark[:3])
-    rect(px, 30, 18, 14, 1, metal_dark[:3])
-    rect(px, 30, 19, 14, 1, metal_dark[:3])
+    # --- Door thin edges ---
+    rect(px, 28, 22, 1, 18, metal_dark)
+    rect(px, 29, 22, 1, 18, metal_dark)
+    rect(px, 30, 22, 14, 1, metal_dark)
+    rect(px, 30, 23, 14, 1, metal_dark)
 
     return px
 
