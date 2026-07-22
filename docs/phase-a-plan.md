@@ -1,103 +1,102 @@
-# Phase A — Blueprint UI: JSON-UI shell + tile-based floor plan
+# Phase A — Runtime tile-composed breaker box UI
 
-Deferred plan. Persisted here so if context compresses, whoever picks this up
-can execute without losing the design.
+Persisted so it survives context compression.
 
-## Goal
+## Non-goal (learned from user feedback)
 
-Replace the current `ActionFormData` blueprint editor with a UI that visually
-matches a real paper blueprint: blueprint-blue background, white grid, and a
-top-down floor plan drawn from pre-authored **tiles** rather than ASCII. The
-plan reads live world state so open doors show as gaps, closed doors as
-walls.
+**No hardcoded per-game backdrops.** The addon must support arbitrary
+fan-built restaurants (JOTC, TJOC, custom pizzerias), so any UI that
+requires a per-game PNG floor plan is a dead end. The backdrop and
+button positions BOTH have to come from the user's applied blueprint,
+composed at runtime.
 
-## Why tiles, not ASCII, not pixel rendering
+## Constraint
 
-Bedrock has no runtime pixel composition. The only way to get a real-looking
-line-drawn floor plan on the blue backdrop is to compose it from **pre-shipped
-tile sprites**, one per cell. Every cell in the grid is chosen server-side
-per world scan, and JSON-UI stamps the picked tile PNG into the cell.
+Bedrock has no runtime pixel composition. So the map has to be built
+from a **small pre-shipped tile set**, arranged in a JSON-UI grid, with
+each cell picked by the server per-render from the world scan.
 
-## Technique
+## Architecture
 
-1. **`server_form.json` override, title-prefix scoped.** Put the custom
-   layout behind a check like `#title == 'FNAF_BLUEPRINT_UI'` (or a hidden
-   `§0§r` prefix that we already use elsewhere) so other addons' forms fall
-   through to vanilla.
-2. **Every map cell is a form button** in the underlying `ActionFormData`.
-   JSON-UI binding `#form_button_texture` on each button resolves to a PNG
-   path. The server-side code names each button after the tile the cell
-   should show:
-   - `button.tile.floor`
-   - `button.tile.wall_h`, `button.tile.wall_v`
-   - `button.tile.corner_ne`, `button.tile.corner_nw`, `button.tile.corner_se`, `button.tile.corner_sw`
-   - `button.tile.door_h`, `button.tile.door_v`
-   - `button.tile.blank`
-   JSON-UI parses the button name into `.tile.<name>` and picks
-   `textures/ui/blueprint_tiles/<name>.png`.
-3. **Grid layout in JSON-UI** — a `stack_panel` per row, each containing a
-   fixed row of buttons. The stack panels have zero spacing and fixed size,
-   giving a pixel-perfect grid regardless of the underlying font.
-4. **Tool buttons** on the left sidebar are the *last* `ActionFormData`
-   buttons (indices >= N × M) and rendered by a separate JSON-UI panel that
-   picks them up from index N × M onward.
-5. **Live tile picking** — server-side scan of the world at the union
-   bounding box's mid-Y (as our existing ASCII scanner does), but instead of
-   returning `§f█`/`§8█`, returns one of the tile names above per cell.
-   Corner/straight detection uses the 4-neighborhood of the current cell.
+### Tile set (pre-shipped PNGs)
 
-## Tile set
+Small (16×16 or 32×32) images at `RP/textures/ui/breaker_tiles/`:
 
-Ship all as 16×16 PNGs in `RP/textures/ui/blueprint_tiles/`. Minimum set for
-MVP:
+- `blank.png`         — solid black (outside)
+- `floor.png`         — solid black (interior — same as blank; room outline is drawn by walls)
+- `wall_n.png`        — thin white line along the top
+- `wall_s.png`        — bottom
+- `wall_e.png`        — right
+- `wall_w.png`        — left
+- `corner_ne.png`     — L-shape top-right
+- `corner_nw.png`     — L-shape top-left
+- `corner_se.png`     — L-shape bottom-right
+- `corner_sw.png`     — L-shape bottom-left
+- `door_h.png`        — dashed horizontal line (or full gap)
+- `door_v.png`        — dashed vertical
+- `breaker_on.png`    — small green switch icon
+- `breaker_off.png`   — small red switch icon
 
-- `floor.png` — subtle blueprint-blue with a lighter dot grid
-- `wall_h.png` — horizontal white line
-- `wall_v.png` — vertical white line
-- `corner_ne.png`, `corner_nw.png`, `corner_se.png`, `corner_sw.png` —
-  L-shaped white lines
-- `door_h.png`, `door_v.png` — dashed white line indicating door opening
-- `blank.png` — solid blueprint-blue (outside all rooms)
+Adjacent-wall combos (`wall_ns`, `wall_ew`, etc.) can be added if the
+map looks bad without them.
 
-Later additions: window tile, room label sprite, breaker box marker.
+### JSON-UI
 
-## JSON-UI files
+- `RP/ui/_ui_defs.json` — declares `ui/server_form.json`.
+- `RP/ui/server_form.json` — overrides the vanilla server form,
+  **gated by a magic title prefix** (`§0§ƒ§b§r`) so other addons'
+  server forms fall through to vanilla.
+- When the prefix matches: render the button collection as a grid
+  (24 columns × 14 rows = 336 buttons). Each button has:
+    - fixed size (e.g. 16px × 16px)
+    - `#form_button_texture` binding for its per-render icon
+    - very small padding so cells tile edge-to-edge
 
-- `RP/ui/server_form.json` — the override. Detects our title prefix and
-  swaps to a custom layout element; otherwise falls back to vanilla.
-- `RP/ui/blueprint_map.json` — layout definitions for the map grid + tile
-  factory + sidebar.
-- `RP/ui/_ui_defs.json` — registers `server_form.json` and any custom UI
-  files.
+### Server side
 
-## Server-side changes
+`breakerBox.js` when opening a matched panel:
 
-- `blueprintUi.js` — pass the tile-picked strings as button *names* using
-  `.button(name, iconPath)`; iconPath still exists for vanilla fallback.
-  Add a prefix constant `FNAF_BLUEPRINT_UI_TITLE` used to gate the override.
-- `mapRender.js` — add `renderTileGrid(dim, rooms, opts)` returning
-  `string[][]` of tile names. Existing ASCII renderer stays for non-JSON-UI
-  builds.
+1. **Classify each cell** via the world scan (same logic as
+   `mapRender.js`), returning one of: `exterior`, `interior`,
+   `wall_*`, `corner_*`, `door_*`, `breaker`.
+2. **Compute breaker slot per room** — each room's XZ centroid mapped
+   to the closest cell; that cell's tile becomes `breaker_on` or
+   `breaker_off` depending on the current state.
+3. **Emit 336 buttons in row-major order.** Every button carries:
+    - text = `` (empty; JSON-UI hides it)
+    - icon = path to the tile PNG matching this cell's classification
+4. **Maintain an in-memory cell→room map** so the click handler knows
+   which button indices are real breakers.
+5. **Click handler**: `res.selection` is a 0..335 index. Look it up
+   in the cell→room map; if it points to a room, toggle. If not, no-op.
 
-## Same shell reused for breaker box UI (interim, until Phase B lands the
-real 3D panel)
+### Fallback
 
-Same override supports two modes via title prefix:
-- `FNAF_BLUEPRINT_UI` → paper backdrop, tile grid map
-- `FNAF_PANEL_UI` → electrical panel backdrop, buttons positioned over
-  drawn switch positions
+If the applied blueprint has zero rooms or the world scan produces no
+interior cells, we don't emit the magic prefix and the panel falls back
+to the current ActionForm text UI (that's still shipping today).
 
-Once Phase B (3D interactive breaker box) is complete, this panel-mode
-JSON-UI becomes the rarely-used config UI (rename rooms, etc.).
+## Effort / iteration expectations
 
-## Effort
+JSON-UI is finicky and I can't preview locally. Expected loop:
+1. First pass: tiles render but grid misaligned, buttons too big/small.
+2. Nudge cell size / spacing.
+3. First pass tiles wrong (walls not connecting): iterate on the
+   classifier's connect-north/south/east/west logic.
+4. Iteration on tile art if the outline looks wrong on-device.
 
-~1–2 turns of work for the JSON-UI shell + tile picker. Extra time if we
-end up drawing polished tile art vs placeholder tiles.
+Realistic: 3–5 back-and-forth turns before it looks right.
 
-## Non-goals
+## Room detection for centroid
 
-- Runtime pixel composition
-- Isometric / perspective rendering
-- Full Ore UI rebuild (Mojang's UI migration is on the horizon but
-  JSON-UI still ships and works)
+Room XZ centroid = midpoint of its union AABB projected to the same
+downsampled grid space as the tile map. If two rooms' centroids land
+in the same cell, the second bumps to the next-nearest empty cell so
+both breakers are visible.
+
+## Non-goals for now
+
+- FNAF-branded backdrop images (rejected)
+- Runtime pixel composition (impossible)
+- Blueprint editor JSON-UI (stays text; that's fine for editing)
+- Camera map (out of scope; may reuse the tile system later)
