@@ -1,0 +1,103 @@
+{
+  "namespace": "server_form",
+
+  "//": "Custom server_form override for the FNAF breaker box tile grid.",
+  "//1": "Renders a 24x14 grid of small buttons when the form title matches",
+  "//2": "our magic prefix. Otherwise falls back to a plain layout.",
+
+  "tile_image": {
+    "type": "image",
+    "size": [10, 10],
+    "layer": 2,
+    "$fit_to_width|default": true,
+    "bindings": [
+      {
+        "binding_name": "#form_button_texture",
+        "binding_name_override": "#texture",
+        "binding_type": "collection",
+        "binding_collection_name": "form_buttons"
+      }
+    ]
+  },
+
+  "tile_button": {
+    "type": "panel",
+    "size": [10, 10],
+    "controls": [
+      {
+        "button@common_buttons.light_content_button": {
+          "size": [10, 10],
+          "$pressed_button_name": "button.form_button_click",
+          "layer": 1,
+          "controls": [
+            { "icon@server_form.tile_image": {} }
+          ],
+          "bindings": [
+            {
+              "binding_type": "collection_details",
+              "binding_collection_name": "form_buttons"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "tile_grid": {
+    "type": "grid",
+    "size": [240, 140],
+    "grid_dimensions": [24, 14],
+    "grid_item_template": "server_form.tile_button",
+    "collection_name": "form_buttons",
+    "anchor_from": "center",
+    "anchor_to": "center",
+    "offset": [0, 8],
+    "bindings": [
+      {
+        "binding_name": "#form_button_length",
+        "binding_name_override": "#collection_length",
+        "binding_type": "global"
+      }
+    ]
+  },
+
+  "tile_title": {
+    "type": "label",
+    "size": ["default", 20],
+    "anchor_from": "top_middle",
+    "anchor_to": "top_middle",
+    "offset": [0, 20],
+    "color": [0.94, 0.95, 0.92],
+    "font_scale_factor": 1.4,
+    "font_type": "MinecraftTen",
+    "text": "#form_text",
+    "text_alignment": "center",
+    "bindings": [
+      {
+        "binding_name": "#form_text",
+        "binding_type": "global"
+      }
+    ]
+  },
+
+  "tile_layout": {
+    "type": "panel",
+    "size": ["100%", "100%"],
+    "controls": [
+      { "backdrop": {
+          "type": "image",
+          "size": ["100%", "100%"],
+          "texture": "textures/ui/Black",
+          "alpha": 0.92,
+          "layer": 0
+        }
+      },
+      { "title@server_form.tile_title": {} },
+      { "grid@server_form.tile_grid": {} }
+    ]
+  },
+
+  "long_form@common.base_screen": {
+    "$screen_content": "server_form.tile_layout"
+  }
+}

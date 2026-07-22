@@ -10,6 +10,7 @@ import zlib
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "blocks", "fnaf")
 ITEM_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "items", "fnaf")
+TILE_DIR = os.path.join(os.path.dirname(__file__), "..", "RP", "textures", "ui", "breaker_tiles")
 
 
 def write_png(path, pixels):
@@ -207,9 +208,88 @@ def breaker_panel_entity_64():
     return px
 
 
+def make_tile_set():
+    """Return a dict of {name: pixels} for the 14 breaker-map tiles.
+
+    Each tile is 16x16. Palette:
+      ground:  #0E1015
+      wall:    #F5F3EA
+      door:    #F0C755 (dashed)
+      on:      #5FB878
+      off:     #D25757
+      frame:   #3B5A8C (subtle box around breaker)
+    """
+    W, H = 16, 16
+    GROUND = (14, 16, 21)
+    WALL   = (245, 243, 234)
+    DOOR   = (240, 199, 85)
+    ON     = (95, 184, 120)
+    OFF    = (210, 87, 87)
+    FRAME  = (59, 90, 140)
+
+    def base():
+        return blank(W, H, GROUND)
+
+    tiles = {}
+
+    tiles["blank"] = base()
+    # floor: same ground but with a single dim dot for a subtle grid feel
+    floor = base()
+    floor[H // 2][W // 2] = (30, 34, 42, 255)
+    tiles["floor"] = floor
+
+    # cardinal walls (2 px thick along the named edge)
+    wall_n = base(); rect(wall_n, 0, 0, W, 2, WALL); tiles["wall_n"] = wall_n
+    wall_s = base(); rect(wall_s, 0, H - 2, W, 2, WALL); tiles["wall_s"] = wall_s
+    wall_w = base(); rect(wall_w, 0, 0, 2, H, WALL); tiles["wall_w"] = wall_w
+    wall_e = base(); rect(wall_e, W - 2, 0, 2, H, WALL); tiles["wall_e"] = wall_e
+
+    # corners: two edges
+    corner_nw = base(); rect(corner_nw, 0, 0, W, 2, WALL); rect(corner_nw, 0, 0, 2, H, WALL); tiles["corner_nw"] = corner_nw
+    corner_ne = base(); rect(corner_ne, 0, 0, W, 2, WALL); rect(corner_ne, W - 2, 0, 2, H, WALL); tiles["corner_ne"] = corner_ne
+    corner_sw = base(); rect(corner_sw, 0, H - 2, W, 2, WALL); rect(corner_sw, 0, 0, 2, H, WALL); tiles["corner_sw"] = corner_sw
+    corner_se = base(); rect(corner_se, 0, H - 2, W, 2, WALL); rect(corner_se, W - 2, 0, 2, H, WALL); tiles["corner_se"] = corner_se
+
+    # doorways: dashed line along middle of one edge
+    door_h = base()
+    # horizontal dashed across the bottom (opening in an N or S wall row)
+    for x in range(0, W, 4):
+        rect(door_h, x, H // 2 - 1, 3, 2, DOOR)
+    tiles["door_h"] = door_h
+
+    door_v = base()
+    for y in range(0, H, 4):
+        rect(door_v, W // 2 - 1, y, 2, 3, DOOR)
+    tiles["door_v"] = door_v
+
+    # breaker on / off — small tile with a switch body
+    breaker_on = base()
+    rect(breaker_on, 4, 3, 8, 10, (25, 31, 42))
+    for i in range(4):
+        breaker_on[3][4 + i * 2 + 1] = (FRAME + (255,))  # top dots (rivets)
+        breaker_on[12][4 + i * 2 + 1] = (FRAME + (255,))
+    rect(breaker_on, 5, 5, 6, 3, ON)
+    tiles["breaker_on"] = breaker_on
+
+    breaker_off = base()
+    rect(breaker_off, 4, 3, 8, 10, (25, 31, 42))
+    for i in range(4):
+        breaker_off[3][4 + i * 2 + 1] = (FRAME + (255,))
+        breaker_off[12][4 + i * 2 + 1] = (FRAME + (255,))
+    rect(breaker_off, 5, 8, 6, 3, OFF)
+    tiles["breaker_off"] = breaker_off
+
+    return tiles
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     os.makedirs(ITEM_DIR, exist_ok=True)
+    os.makedirs(TILE_DIR, exist_ok=True)
+
+    for name, pixels in make_tile_set().items():
+        write_png(os.path.join(TILE_DIR, f"{name}.png"), pixels)
+    print(f"wrote 14 tile textures to {TILE_DIR}")
 
     write_png(os.path.join(OUT_DIR, "breaker_panel.png"), breaker_panel_entity_64())
 
