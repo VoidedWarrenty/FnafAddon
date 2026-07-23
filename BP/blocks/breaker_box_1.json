@@ -29,11 +29,11 @@
       },
       "minecraft:collision_box": {
         "origin": [-7, 0, 3.5],
-        "size":   [14, 18, 4.5]
+        "size":   [14, 16, 4.5]
       },
       "minecraft:selection_box": {
         "origin": [-7, 0, 3.5],
-        "size":   [14, 18, 4.5]
+        "size":   [14, 16, 4.5]
       },
       "minecraft:transformation": { "rotation": [0, 180, 0] }
     },

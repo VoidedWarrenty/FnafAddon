@@ -4,22 +4,20 @@
   //
   // Grid override for the electrical breaker box. Only applies when the
   // ActionForm's title starts with "ELECTRICAL_MAP|". Every other form
-  // (blueprint editor etc.) falls through to vanilla via the twin
-  // visibility binding on `original_long_form_buttons`.
-  //
-  // If this file breaks any vanilla form: delete it. The BP script
-  // paths still function (as a 768-item vertical list) with no RP
-  // override at all.
+  // (blueprint editor etc.) falls through to a manually replicated
+  // vanilla button stack — the collection_details binding on the
+  // individual buttons is what lets a plain stack_panel iterate a form
+  // button collection without going through common_dialogs.
   //
 
-  // --- One 10x10 cell in the map grid --------------------------------
+  // -- 10x10 grid cell: tile image + invisible click hitbox ------------
 
-  "electrical_cell_button@common.empty_panel": {
+  "electrical_cell": {
+    "type": "panel",
     "size": [ 10, 10 ],
-    "$pressed_button_name": "button.form_button_click",
-    "$focus_id_override": "form_button_focus_id",
     "controls": [
-      { "cell_image": {
+      {
+        "cell_image": {
           "type": "image",
           "size": [ "100%", "100%" ],
           "texture": "#form_button_texture",
@@ -30,8 +28,10 @@
               "binding_name": "#form_button_texture"
             }
           ]
-      }},
-      { "cell_hitbox": {
+        }
+      },
+      {
+        "cell_hitbox": {
           "type": "button",
           "size": [ "100%", "100%" ],
           "layer": 2,
@@ -42,72 +42,83 @@
               "binding_collection_name": "form_buttons"
             }
           ]
-      }}
-    ]
-  },
-
-  // --- Grid container. Fixed 32x24. -----------------------------------
-
-  "electrical_grid": {
-    "type": "grid",
-    "size": [ 320, 240 ],
-    "grid_dimensions": [ 32, 24 ],
-    "grid_item_template": "server_form.electrical_cell_button",
-    "collection_name": "form_buttons"
-  },
-
-  "electrical_wrapper": {
-    "type": "panel",
-    "size": [ "100%c", "100%c" ],
-    "controls": [
-      {
-        "title": {
-          "type": "label",
-          "text": "§lMAIN ELECTRICAL PANEL",
-          "color": [ 0.85, 0.85, 0.85 ],
-          "size": [ 320, 12 ],
-          "offset": [ 0, -4 ],
-          "anchor_from": "top_middle",
-          "anchor_to": "bottom_middle"
-        }
-      },
-      { "grid@server_form.electrical_grid": {} }
-    ]
-  },
-
-  // --- Vanilla fallback (used when title lacks the prefix) -----------
-
-  "original_long_form_buttons@common_dialogs.dynamic_grid_panel": {
-    "size": [ "100%", "100%c" ],
-    "$button_panel_binding_name": "#form_buttons_grid",
-    "$button_panel_binding_condition": "not_visible",
-    "$content_size": [ 300, "100%" ],
-    "$grid_content_control": "server_form.long_form_button_panel"
-  },
-
-  "long_form_button_panel": {
-    "type": "stack_panel",
-    "size": [ "100%", "100%c" ],
-    "$button_content_override": "server_form.long_form_button_content",
-    "controls": [
-      {
-        "form_button_stack@common_dialogs.form_stack_template": {
-          "$stack_binding_name": "#form_buttons_grid",
-          "$stack_collection_name": "form_buttons",
-          "$item_template": "common_dialogs.form_button_template"
         }
       }
     ]
   },
 
-  // --- Title-gated wrapper. Only ONE of the two children is visible. -
+  // -- The 32x24 grid itself. Fills 320x240 UI pixels ------------------
+
+  "electrical_grid_wrapper": {
+    "type": "grid",
+    "size": [ 320, 240 ],
+    "grid_dimensions": [ 32, 24 ],
+    "grid_item_template": "server_form.electrical_cell",
+    "collection_name": "form_buttons"
+  },
+
+  // -- Vanilla replica: one button, uses light_content_button base
+  //    which is the exact style vanilla server_form uses ---------------
+
+  "vanilla_form_button@common_buttons.light_content_button": {
+    "size": [ "100%", 20 ],
+    "$pressed_button_name": "button.form_button_click",
+    "$button_content": "server_form.vanilla_form_button_content",
+    "bindings": [
+      {
+        "binding_type": "collection_details",
+        "binding_collection_name": "form_buttons"
+      }
+    ]
+  },
+
+  "vanilla_form_button_content": {
+    "type": "panel",
+    "size": [ "100%", "100%" ],
+    "controls": [
+      {
+        "button_label": {
+          "type": "label",
+          "text": "#form_button_text",
+          "color": [ 1, 1, 1 ],
+          "size": [ "100% - 6px", "default" ],
+          "layer": 3,
+          "offset": [ 0, 0 ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "bindings": [
+            {
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons",
+              "binding_name": "#form_button_text"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  // Stack of vanilla buttons. The collection is iterated by the child
+  // template's collection_details binding — plain stack_panel handles
+  // this correctly for form button collections.
+  "vanilla_button_stack": {
+    "type": "stack_panel",
+    "orientation": "vertical",
+    "size": [ "100%", "100%c" ],
+    "collection_name": "form_buttons",
+    "controls": [
+      { "b@server_form.vanilla_form_button": {} }
+    ]
+  },
+
+  // -- The one override. Two children, exactly one visible per form ---
 
   "long_form_dynamic_buttons_panel": {
     "type": "panel",
     "size": [ "100%", "100%c" ],
     "controls": [
       {
-        "electrical@server_form.electrical_wrapper": {
+        "electrical@server_form.electrical_grid_wrapper": {
           "bindings": [
             {
               "binding_type": "global",
@@ -122,7 +133,7 @@
         }
       },
       {
-        "vanilla@server_form.original_long_form_buttons": {
+        "vanilla@server_form.vanilla_button_stack": {
           "bindings": [
             {
               "binding_type": "global",
