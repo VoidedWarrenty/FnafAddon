@@ -92,25 +92,9 @@
     "size": [ 10, 10 ],
     "controls": [
       {
-        "cell_image": {
-          "type": "image",
-          "size": [ "100%", "100%" ],
-          "layer": 5,
-          "bindings": [
-            {
-              "binding_name": "#form_button_texture",
-              "binding_name_override": "#texture",
-              "binding_type": "collection",
-              "binding_collection_name": "form_buttons"
-            }
-          ]
-        }
-      },
-      {
         "cell_hitbox@common_buttons.light_text_button": {
           "$pressed_button_name": "button.form_button_click",
           "size": [ "100%", "100%" ],
-          "layer": 10,
           "$button_text": "#null",
           "$button_text_binding_type": "collection",
           "$button_text_grid_collection_name": "form_buttons",
@@ -118,6 +102,32 @@
             {
               "binding_type": "collection_details",
               "binding_collection_name": "form_buttons"
+            }
+          ]
+        }
+      },
+      {
+        "cell_image": {
+          "type": "image",
+          "size": [ "100%", "100%" ],
+          "layer": 200,
+          "bindings": [
+            {
+              "binding_name": "#form_button_texture",
+              "binding_name_override": "#texture",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            },
+            {
+              "binding_name": "#form_button_texture_file_system",
+              "binding_name_override": "#texture_file_system",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#texture = '') or (#texture = 'loading')))",
+              "target_property_name": "#visible"
             }
           ]
         }
