@@ -49,6 +49,7 @@ export function unregisterBreakerBox(dimensionId, x, y, z) {
   writeIndex(BB_INDEX_KEY, readIndex(BB_INDEX_KEY).filter(k => k !== key));
   world.setDynamicProperty(BB_PREFIX + key, undefined);
   world.setDynamicProperty(BB_SNAP_PREFIX + key, undefined);
+  world.setDynamicProperty("fnaf:bb_map:" + key, undefined);
 }
 
 export function listBreakerBoxes() {

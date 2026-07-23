@@ -1,179 +1,38 @@
-import { world, system } from "@minecraft/server";
-import { ActionFormData } from "@minecraft/server-ui";
-import {
-  getBreakerBoxState, setRoomPowered,
-  getBreakerBoxSnapshot, setBreakerBoxSnapshot,
-} from "./state.js";
-import { renderMap } from "./mapRender.js";
-import { TILE_PATH, TILES } from "./breakerTileGrid.js";
+import { openBreakerForm } from "./breakerForm.js";
+import { generateMapSnapshot } from "./mapPipeline.js";
+import { saveMapSnapshot } from "./mapSerializer.js";
+import { bindLightsToSnapshot } from "./electricalRoomManager.js";
+import { debugEnabled, debugDumpSnapshot } from "./mapDebug.js";
 
 export const BREAKER_BOX_ID = "fnaf:breaker_box_1";
 
-// Magic prefix picked up by the JSON-UI override in
-// RP/ui/server_form.json to switch to the panel-styled layout. Other
-// forms (blueprint editor, other addons') fall through to vanilla.
-const PANEL_UI_PREFIX = "FNAFTILE:";
-
-// Cheap deterministic string hash — used to detect when the applied
-// blueprint's contents have shifted, so we can invalidate the cached
-// map without doing a full recompute on every panel open.
-function hashString(s) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(16);
-}
-
-function fingerprintBlueprint(bp) {
-  // Serialize the fields that affect the rendered map. Rename a room or
-  // change a polygon → different fingerprint → forced recompute.
-  const canonical = {
-    n: bp.name,
-    r: bp.rooms.map(r => ({
-      id: r.id, n: r.name,
-      f: (r.floors ?? []).map(f => ({
-        d: f.dim,
-        p: f.polygon.map(p => [p.x, p.z]),
-        y1: f.floorY, y2: f.ceilingY,
-        o: (f.openings ?? []).map(o => [o.segIdx, o.startBlock, o.endBlock]),
-      })),
-    })),
-  };
-  return hashString(JSON.stringify(canonical));
-}
-
-function powerGauge(on, total) {
-  const width = 18;
-  const filled = total === 0 ? 0 : Math.round((on / total) * width);
-  const bar = "§a" + "▰".repeat(filled) + "§8" + "▱".repeat(width - filled);
-  const pct = total === 0 ? 0 : Math.round((on / total) * 100);
-  return `§7Load §8│${bar}§7│ §f${pct}%§7 §8(§a${on}§7/§f${total}§8)`;
-}
-
-function panelHeader(title, subtitle) {
-  const bar = "§7━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
-  return `${bar}\n§8┃ §f§l${title.toUpperCase()}§r §7- §7${subtitle}\n${bar}`;
-}
+// Public entry — the rest of the addon calls into these three functions.
 
 export function openBreakerBox(player, block) {
-  const { x, y, z } = block.location;
-  const dim = block.dimension.id;
-  const snapshot = getBreakerBoxSnapshot(dim, x, y, z);
-  const state = getBreakerBoxState(dim, x, y, z);
-
-  if (!snapshot || !snapshot.rooms || snapshot.rooms.length === 0) {
-    new ActionFormData()
-      .title("§lBreaker Panel")
-      .body(
-        panelHeader("MAIN PANEL", "unconfigured") + "\n\n" +
-        "§7This panel has no §fblueprint§7 applied yet.\n" +
-        "§7Sneak-tap the panel while holding a §fBlueprint§7 to stamp it.\n\n" +
-        "§8§oTip: right-click a blueprint in the world to open its editor."
-      )
-      .button("§7Close")
-      .show(player)
-      .catch(() => {});
-    return;
-  }
-
-  const powered = snapshot.rooms.filter(r => state[r.id] === true).length;
-  const total = snapshot.rooms.length;
-  const bpName = snapshot.sourceName || "Panel";
-
-  // Map string was computed and cached at blueprint-apply time. No world
-  // scan happens here — the panel just displays what was frozen in.
-  const cachedMap = snapshot.mapText ??
-    renderMap(dim, snapshot.rooms, { maxCols: 28, maxRows: 12, style: "panel" });
-
-  const body = [
-    panelHeader(bpName, `${powered}/${total} ON`),
-    powerGauge(powered, total),
-    "",
-    cachedMap,
-  ].join("\n");
-
-  // The magic prefix triggers the JSON-UI panel styling. Blueprint editor
-  // and any other addon's forms don't include this prefix, so they render
-  // with vanilla layout untouched.
-  const form = new ActionFormData()
-    .title(`${PANEL_UI_PREFIX} ${bpName}`)
-    .body(body);
-
-  const buttons = [];
-  for (let i = 0; i < snapshot.rooms.length; i++) {
-    const r = snapshot.rooms[i];
-    const on = state[r.id] === true;
-    const label = `${on ? "§a▲ ON " : "§c▼ OFF"}§r §8│ §7#${String(i + 1).padStart(2, " ")}  §f${r.name}`;
-    const icon = on ? `${TILE_PATH}breaker_on` : `${TILE_PATH}breaker_off`;
-    form.button(label, icon);
-    buttons.push({ kind: "toggle", room: r });
-  }
-  form.button("§a▲▲ MAIN BREAKER ▸ ALL ON");    buttons.push({ kind: "all_on" });
-  form.button("§c▼▼ MAIN BREAKER ▸ ALL OFF");   buttons.push({ kind: "all_off" });
-  form.button("§8✖ Close");                       buttons.push({ kind: "close" });
-
-  form.show(player).then(res => {
-    if (res.canceled || res.selection === undefined) return;
-    const choice = buttons[res.selection];
-    if (!choice || choice.kind === "close") return;
-
-    if (choice.kind === "toggle") {
-      const nowOn = state[choice.room.id] === true;
-      setRoomPowered(dim, x, y, z, choice.room.id, !nowOn);
-      player.onScreenDisplay.setActionBar(
-        `${!nowOn ? "§a▲ Breaker ON" : "§c▼ Breaker OFF"} §7· §f${choice.room.name}`
-      );
-    } else if (choice.kind === "all_on") {
-      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, true);
-      player.onScreenDisplay.setActionBar("§a▲▲ Main breaker ON — all rooms powered");
-    } else if (choice.kind === "all_off") {
-      for (const r of snapshot.rooms) setRoomPowered(dim, x, y, z, r.id, false);
-      player.onScreenDisplay.setActionBar("§c▼▼ Main breaker OFF — power cut");
-    }
-
-    system.run(() => {
-      try {
-        if (block.typeId === BREAKER_BOX_ID) openBreakerBox(player, block);
-      } catch (_) {}
-    });
-  }).catch(() => {});
+  openBreakerForm(player, block);
 }
 
 export function applyBlueprintToBreakerBox(player, block, blueprint) {
   const { x, y, z } = block.location;
   const dim = block.dimension.id;
 
-  // Freeze the blueprint's current shape and pre-compute the panel map so
-  // opening the box later doesn't need to touch the world at all. Same
-  // blueprint applied to a second box → same fingerprint → same map.
-  const fingerprint = fingerprintBlueprint(blueprint);
-  const mapText = renderMap(
-    dim,
-    blueprint.rooms,
-    { maxCols: 28, maxRows: 12, style: "panel" }
+  const snap = generateMapSnapshot(blueprint, dim);
+  if (!snap) {
+    player.onScreenDisplay.setActionBar(
+      "§cCouldn't build map — blueprint has no floors in this dimension."
+    );
+    return;
+  }
+  saveMapSnapshot(dim, x, y, z, snap);
+  bindLightsToSnapshot(dim, x, y, z);
+
+  player.onScreenDisplay.setActionBar(
+    `§a✔ Stamped §f${blueprint.name} §a→ panel §7(${snap.meta.length} room${snap.meta.length === 1 ? "" : "s"})`
   );
 
-  const snapshot = {
-    sourceBpId: blueprint.id,
-    sourceName: blueprint.name,
-    fingerprint,
-    mapText,
-    appliedAtTick: system.currentTick,
-    rooms: blueprint.rooms.map(r => ({
-      id: r.id,
-      name: r.name,
-      floors: (r.floors ?? []).map(f => ({
-        dim: f.dim,
-        polygon: f.polygon.map(p => ({ x: p.x, z: p.z })),
-        floorY: f.floorY,
-        ceilingY: f.ceilingY,
-        openings: (f.openings ?? []).map(o => ({ ...o })),
-      })),
-    })),
-  };
-  setBreakerBoxSnapshot(dim, x, y, z, snapshot);
-  player.onScreenDisplay.setActionBar(
-    `§a✔ Stamped §f${blueprint.name} §a→ panel §7(${snapshot.rooms.length} room${snapshot.rooms.length === 1 ? "" : "s"})`
-  );
+  if (debugEnabled()) {
+    player.sendMessage(debugDumpSnapshot(snap));
+  }
 }
 
 export function togglePanelDoor(block) {

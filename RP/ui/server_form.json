@@ -1,0 +1,141 @@
+{
+  "namespace": "server_form",
+
+  //
+  // Grid override for the electrical breaker box. Only applies when the
+  // ActionForm's title starts with "ELECTRICAL_MAP|". Every other form
+  // (blueprint editor etc.) falls through to vanilla via the twin
+  // visibility binding on `original_long_form_buttons`.
+  //
+  // If this file breaks any vanilla form: delete it. The BP script
+  // paths still function (as a 768-item vertical list) with no RP
+  // override at all.
+  //
+
+  // --- One 10x10 cell in the map grid --------------------------------
+
+  "electrical_cell_button@common.empty_panel": {
+    "size": [ 10, 10 ],
+    "$pressed_button_name": "button.form_button_click",
+    "$focus_id_override": "form_button_focus_id",
+    "controls": [
+      { "cell_image": {
+          "type": "image",
+          "size": [ "100%", "100%" ],
+          "texture": "#form_button_texture",
+          "bindings": [
+            {
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons",
+              "binding_name": "#form_button_texture"
+            }
+          ]
+      }},
+      { "cell_hitbox": {
+          "type": "button",
+          "size": [ "100%", "100%" ],
+          "layer": 2,
+          "$pressed_button_name": "button.form_button_click",
+          "bindings": [
+            {
+              "binding_type": "collection_details",
+              "binding_collection_name": "form_buttons"
+            }
+          ]
+      }}
+    ]
+  },
+
+  // --- Grid container. Fixed 32x24. -----------------------------------
+
+  "electrical_grid": {
+    "type": "grid",
+    "size": [ 320, 240 ],
+    "grid_dimensions": [ 32, 24 ],
+    "grid_item_template": "server_form.electrical_cell_button",
+    "collection_name": "form_buttons"
+  },
+
+  "electrical_wrapper": {
+    "type": "panel",
+    "size": [ "100%c", "100%c" ],
+    "controls": [
+      {
+        "title": {
+          "type": "label",
+          "text": "§lMAIN ELECTRICAL PANEL",
+          "color": [ 0.85, 0.85, 0.85 ],
+          "size": [ 320, 12 ],
+          "offset": [ 0, -4 ],
+          "anchor_from": "top_middle",
+          "anchor_to": "bottom_middle"
+        }
+      },
+      { "grid@server_form.electrical_grid": {} }
+    ]
+  },
+
+  // --- Vanilla fallback (used when title lacks the prefix) -----------
+
+  "original_long_form_buttons@common_dialogs.dynamic_grid_panel": {
+    "size": [ "100%", "100%c" ],
+    "$button_panel_binding_name": "#form_buttons_grid",
+    "$button_panel_binding_condition": "not_visible",
+    "$content_size": [ 300, "100%" ],
+    "$grid_content_control": "server_form.long_form_button_panel"
+  },
+
+  "long_form_button_panel": {
+    "type": "stack_panel",
+    "size": [ "100%", "100%c" ],
+    "$button_content_override": "server_form.long_form_button_content",
+    "controls": [
+      {
+        "form_button_stack@common_dialogs.form_stack_template": {
+          "$stack_binding_name": "#form_buttons_grid",
+          "$stack_collection_name": "form_buttons",
+          "$item_template": "common_dialogs.form_button_template"
+        }
+      }
+    ]
+  },
+
+  // --- Title-gated wrapper. Only ONE of the two children is visible. -
+
+  "long_form_dynamic_buttons_panel": {
+    "type": "panel",
+    "size": [ "100%", "100%c" ],
+    "controls": [
+      {
+        "electrical@server_form.electrical_wrapper": {
+          "bindings": [
+            {
+              "binding_type": "global",
+              "binding_name": "#title_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#title_text - 'ELECTRICAL_MAP|') = #title_text))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "vanilla@server_form.original_long_form_buttons": {
+          "bindings": [
+            {
+              "binding_type": "global",
+              "binding_name": "#title_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "((#title_text - 'ELECTRICAL_MAP|') = #title_text)",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
