@@ -12,6 +12,7 @@ import {
   BLUEPRINT_ID, ensureBlueprint, handleBlueprintUseOn, handleBlueprintUseAir,
 } from "./blueprintItem.js";
 import { startVisualization } from "./blueprintViz.js";
+import { registerUiProofs } from "./uiProofs.js";
 
 const LIGHT_ID = "fnaf:room_light";
 
@@ -116,3 +117,4 @@ system.runInterval(() => {
 }, 20);
 
 startVisualization();
+registerUiProofs();

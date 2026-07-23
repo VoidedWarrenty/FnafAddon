@@ -1,23 +1,25 @@
 # Phase 0 — Renderer Migration Inventory
 
-Target architecture: **vector renderer** per ADR-001.
+Target architecture: **vector renderer** per ADR-001, formalized as a
+five-layer pipeline in [docs/architecture.md](./architecture.md).
 Approach: **engine refactor, not rewrite** — preserve every subsystem that
 already works, replace only the layer that draws the map.
 
 Pipeline the target expects:
 
 ```
-Blueprint Recording
-  → Rasterizer (unchanged — feeds room detection)
-  → Room Detection (unchanged)
-  → Wall Normalization        ← NEW stage
-  → Collinear Merge           ← NEW stage
-  → Doorway Processing        ← NEW stage
-  → World Bounds
-  → Render Model              ← NEW artifact (walls + breakers + labels)
-  → JSON UI Encoder           ← REPLACES the raster-grid encoder
-  → Breaker Box UI
+Blueprint
+  → Geometry Engine  (rasterize → detect rooms → normalize → merge → subtract doors → bounds)
+  → Device Renderer  (this device's primitives — walls, breakers, labels, icons)
+  → Render Model     (UI-agnostic geometry primitives)
+  → UI Encoder       (consumes a RendererCapabilities contract; emits transport)
+  → JSON UI (server_form) OR future backends (DDUI, editor preview, web)
 ```
+
+The Render Model is its own subsystem — not a byproduct of `mapPipeline`.
+Full type shapes (RenderWall, RenderBreaker, RenderLabel, RenderIcon,
+RenderPolygon, RendererCapabilities) live in
+[docs/architecture.md](./architecture.md).
 
 Classification legend:
 
@@ -92,6 +94,7 @@ Everything here is a JSON-UI capability I've asserted but not proven on device. 
 | U5 | Image tint via `color` property in Bedrock JSON-UI | Would let ONE wall texture serve multiple colors (breaker state, room highlight). | Set `color: [1, 0.4, 0.4]` on a white image; verify red rendering. |
 | U6 | Canvas overflow clipping | Whether walls whose `offset+size` extends past the canvas panel get clipped or bleed. | Deliberately over-size a slot; observe. |
 | U7 | Text label element with runtime `text` binding for room labels | Needed for optional room name labels in the render model. | `type: label` with `text: #form_button_text` inside canvas. |
+| U8 | Image visibility controllable independently of button visibility while sharing the same data source | If yes, decorative layers (walls, labels) can share a collection with the interactive buttons and just hide the button hitbox for non-interactive items — one channel, two lifecycles. If no, walls and breakers must be separate control pools. | One `image + button` pair bound to the same collection, image visible always, button visibility gated on a second binding; verify only the image survives when the button hides. |
 
 The result of U1/U2/U3 decides between two REPLACE branches:
 
