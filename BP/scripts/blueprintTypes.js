@@ -7,10 +7,11 @@
 export const MAP_VERSION = 3;
 
 // Grid resolution. Single tunable — everything downstream reads these.
-// 32x24 = 768 cells (== 768 buttons in the ActionForm). If mobile
-// performance is bad, drop to 24x18 (=432) or 16x12 (=192).
-export const GRID_W = 32;
-export const GRID_H = 24;
+// 24x18 = 432 cells (== 432 buttons in the ActionForm). Every module
+// reads GRID_W / GRID_H, so bumping to 32x24 (768) if we want finer
+// detail is a one-line change. Down to 16x12 (192) if it's still slow.
+export const GRID_W = 24;
+export const GRID_H = 18;
 
 // Two cells of exterior padding around the world bbox when computing the
 // world→grid transform.

@@ -71,10 +71,10 @@
 
   "electrical_canvas": {
     "type": "grid",
-    "size": [ 320, 240 ],
+    "size": [ 288, 216 ],
     "anchor_from": "center",
     "anchor_to": "center",
-    "grid_dimensions": [ 32, 24 ],
+    "grid_dimensions": [ 24, 18 ],
     "grid_item_template": "server_form.electrical_cell",
     "collection_name": "form_buttons"
   },
@@ -89,28 +89,13 @@
 
   "electrical_cell": {
     "type": "panel",
-    "size": [ 10, 10 ],
+    "size": [ 12, 12 ],
     "controls": [
-      {
-        "cell_hitbox@common_buttons.light_text_button": {
-          "$pressed_button_name": "button.form_button_click",
-          "size": [ "100%", "100%" ],
-          "$button_text": "#null",
-          "$button_text_binding_type": "collection",
-          "$button_text_grid_collection_name": "form_buttons",
-          "bindings": [
-            {
-              "binding_type": "collection_details",
-              "binding_collection_name": "form_buttons"
-            }
-          ]
-        }
-      },
       {
         "cell_image": {
           "type": "image",
           "size": [ "100%", "100%" ],
-          "layer": 200,
+          "layer": 1,
           "bindings": [
             {
               "binding_name": "#form_button_texture",
@@ -128,6 +113,20 @@
               "binding_type": "view",
               "source_property_name": "(not ((#texture = '') or (#texture = 'loading')))",
               "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "cell_hitbox": {
+          "type": "button",
+          "size": [ "100%", "100%" ],
+          "layer": 2,
+          "$pressed_button_name": "button.form_button_click",
+          "bindings": [
+            {
+              "binding_type": "collection_details",
+              "binding_collection_name": "form_buttons"
             }
           ]
         }
