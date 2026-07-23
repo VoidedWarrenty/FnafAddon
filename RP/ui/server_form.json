@@ -1,0 +1,157 @@
+{
+  "namespace": "server_form",
+
+  //
+  // The vanilla parent instantiates long_form_dynamic_buttons_panel with
+  // implicit props (orientation: vertical, collection_name: form_buttons).
+  // Our override MUST be a stack_panel so those props are accepted; a
+  // plain "panel" rejects them and Bedrock logs a warning + falls back
+  // to a green-rectangle placeholder for every button.
+  //
+  // Because the stack itself iterates `form_buttons`, its child template
+  // is instantiated ONCE PER FORM BUTTON — so we render exactly one
+  // control per iteration: either an electrical grid cell (when the
+  // form's title starts with ELECTRICAL_MAP|) or a normal-looking form
+  // button (otherwise). Visibility is gated with the title-substring
+  // trick.
+  //
+  // Grid ARRANGEMENT (32×24 spatial layout) for electrical forms is a
+  // follow-up — vanilla forces vertical stacking here, and jumping out
+  // to a real grid element requires overriding a parent (long_form_panel)
+  // whose exact vanilla structure we haven't nailed down yet. For now
+  // the electrical form renders as a stack of tile images — same data,
+  // wrong shape, but nothing else breaks.
+  //
+
+  // -- Vanilla-style button label (visible text) ----------------------
+
+  "vanilla_form_button_label": {
+    "type": "label",
+    "text": "#form_button_text",
+    "color": [ 1, 1, 1 ],
+    "size": [ "100% - 6px", "default" ],
+    "anchor_from": "center",
+    "anchor_to": "center",
+    "bindings": [
+      {
+        "binding_type": "collection",
+        "binding_collection_name": "form_buttons",
+        "binding_name": "#form_button_text"
+      }
+    ]
+  },
+
+  // A plain interactive button — no inheritance chain that might not
+  // resolve. Its background is a nine-slice of the common button
+  // texture which IS a stable Bedrock UI asset.
+  "vanilla_form_button": {
+    "type": "button",
+    "size": [ "100%", 22 ],
+    "$pressed_button_name": "button.form_button_click",
+    "default_control": "default",
+    "hover_control": "hover",
+    "pressed_control": "pressed",
+    "controls": [
+      {
+        "default": {
+          "type": "image",
+          "texture": "textures/ui/button_borderless_light",
+          "controls": [
+            { "label@server_form.vanilla_form_button_label": { "layer": 2 } }
+          ]
+        }
+      },
+      {
+        "hover": {
+          "type": "image",
+          "texture": "textures/ui/button_borderless_lighthover",
+          "controls": [
+            { "label@server_form.vanilla_form_button_label": { "layer": 2 } }
+          ]
+        }
+      },
+      {
+        "pressed": {
+          "type": "image",
+          "texture": "textures/ui/button_borderless_lightpressed",
+          "controls": [
+            { "label@server_form.vanilla_form_button_label": { "layer": 2 } }
+          ]
+        }
+      }
+    ]
+  },
+
+  // -- Electrical grid cell (single tile) ------------------------------
+
+  "electrical_form_cell": {
+    "type": "panel",
+    "size": [ 10, 10 ],
+    "controls": [
+      {
+        "img": {
+          "type": "image",
+          "size": [ "100%", "100%" ],
+          "texture": "#form_button_texture",
+          "bindings": [
+            {
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons",
+              "binding_name": "#form_button_texture"
+            }
+          ]
+        }
+      },
+      {
+        "hit": {
+          "type": "button",
+          "size": [ "100%", "100%" ],
+          "layer": 2,
+          "$pressed_button_name": "button.form_button_click"
+        }
+      }
+    ]
+  },
+
+  // -- The one override. type: stack_panel so vanilla-injected
+  //    orientation + collection_name are accepted. -------------------
+
+  "long_form_dynamic_buttons_panel": {
+    "type": "stack_panel",
+    "size": [ "100%", "100%c" ],
+    "controls": [
+      {
+        "electrical@server_form.electrical_form_cell": {
+          "bindings": [
+            {
+              "binding_type": "global",
+              "source_property_name": "#form_button_length",
+              "target_property_name": "#form_button_length"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(#form_button_length > 100)",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "vanilla@server_form.vanilla_form_button": {
+          "bindings": [
+            {
+              "binding_type": "global",
+              "source_property_name": "#form_button_length",
+              "target_property_name": "#form_button_length"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(#form_button_length <= 100)",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
