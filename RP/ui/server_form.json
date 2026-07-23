@@ -123,10 +123,14 @@
       {
         "electrical@server_form.electrical_form_cell": {
           "bindings": [
-            { "binding_type": "global", "binding_name": "#title_text" },
+            {
+              "binding_type": "global",
+              "source_property_name": "#form_button_length",
+              "target_property_name": "#form_button_length"
+            },
             {
               "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'ELECTRICAL_MAP|') = #title_text))",
+              "source_property_name": "(#form_button_length > 100)",
               "target_property_name": "#visible"
             }
           ]
@@ -135,10 +139,14 @@
       {
         "vanilla@server_form.vanilla_form_button": {
           "bindings": [
-            { "binding_type": "global", "binding_name": "#title_text" },
+            {
+              "binding_type": "global",
+              "source_property_name": "#form_button_length",
+              "target_property_name": "#form_button_length"
+            },
             {
               "binding_type": "view",
-              "source_property_name": "((#title_text - 'ELECTRICAL_MAP|') = #title_text)",
+              "source_property_name": "(#form_button_length <= 100)",
               "target_property_name": "#visible"
             }
           ]
