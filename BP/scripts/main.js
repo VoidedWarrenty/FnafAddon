@@ -12,6 +12,9 @@ import {
   BLUEPRINT_ID, ensureBlueprint, handleBlueprintUseOn, handleBlueprintUseAir,
 } from "./blueprintItem.js";
 import { startVisualization } from "./blueprintViz.js";
+import {
+  MARKER_ID, handleMarkerTap, tickSneakExitCheck, cleanupOrphanedMarkers,
+} from "./breakerCamera.js";
 
 const LIGHT_ID = "fnaf:room_light";
 
@@ -109,10 +112,28 @@ world.afterEvents.playerBreakBlock.subscribe(ev => {
   }
 });
 
+// --- Breaker marker taps (camera-mode UI) ----------------------------
+
+world.beforeEvents.playerInteractWithEntity.subscribe(ev => {
+  const { target, player } = ev;
+  if (!target || target.typeId !== MARKER_ID) return;
+  ev.cancel = true;
+  if (!throttle(player)) return;
+  system.run(() => {
+    try { handleMarkerTap(player, target); } catch (_) {}
+  });
+});
+
 // --- Ticking ---------------------------------------------------------
 
 system.runInterval(() => {
   try { syncAllRoomLights(); } catch (_) {}
 }, 20);
+
+// Sneak-exit check + orphan cleanup. Runs at 4 Hz so exit feels snappy.
+system.runInterval(() => {
+  try { tickSneakExitCheck(); } catch (_) {}
+  try { cleanupOrphanedMarkers(); } catch (_) {}
+}, 5);
 
 startVisualization();

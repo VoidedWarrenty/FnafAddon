@@ -1,4 +1,4 @@
-import { openBreakerForm } from "./breakerForm.js";
+import { enterCameraMode } from "./breakerCamera.js";
 import { generateMapSnapshot } from "./mapPipeline.js";
 import { saveMapSnapshot } from "./mapSerializer.js";
 import { bindLightsToSnapshot } from "./electricalRoomManager.js";
@@ -9,7 +9,7 @@ export const BREAKER_BOX_ID = "fnaf:breaker_box_1";
 // Public entry — the rest of the addon calls into these three functions.
 
 export function openBreakerBox(player, block) {
-  openBreakerForm(player, block);
+  enterCameraMode(player, block);
 }
 
 export function applyBlueprintToBreakerBox(player, block, blueprint) {
