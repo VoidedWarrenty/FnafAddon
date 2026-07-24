@@ -51,63 +51,6 @@
         }
       },
       {
-        "proof_u1a_long_form@common_dialogs.main_panel_no_buttons": {
-          "$title_panel": "common_dialogs.standard_title_label",
-          "$title_size": [ "100% - 14px", 10 ],
-          "size": [ 340, 280 ],
-          "$text_name": "#title_text",
-          "$title_text_binding_type": "none",
-          "$child_control": "server_form.proof_u1a_canvas",
-          "layer": 2,
-          "bindings": [
-            { "binding_name": "#title_text" },
-            {
-              "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1A|') = #title_text))",
-              "target_property_name": "#visible"
-            }
-          ]
-        }
-      },
-      {
-        "proof_u1b_long_form@common_dialogs.main_panel_no_buttons": {
-          "$title_panel": "common_dialogs.standard_title_label",
-          "$title_size": [ "100% - 14px", 10 ],
-          "size": [ 340, 280 ],
-          "$text_name": "#title_text",
-          "$title_text_binding_type": "none",
-          "$child_control": "server_form.proof_u1b_canvas",
-          "layer": 2,
-          "bindings": [
-            { "binding_name": "#title_text" },
-            {
-              "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1B|') = #title_text))",
-              "target_property_name": "#visible"
-            }
-          ]
-        }
-      },
-      {
-        "proof_u1c_long_form@common_dialogs.main_panel_no_buttons": {
-          "$title_panel": "common_dialogs.standard_title_label",
-          "$title_size": [ "100% - 14px", 10 ],
-          "size": [ 340, 280 ],
-          "$text_name": "#title_text",
-          "$title_text_binding_type": "none",
-          "$child_control": "server_form.proof_u1c_canvas",
-          "layer": 2,
-          "bindings": [
-            { "binding_name": "#title_text" },
-            {
-              "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1C|') = #title_text))",
-              "target_property_name": "#visible"
-            }
-          ]
-        }
-      },
-      {
         "proof_u4_long_form@common_dialogs.main_panel_no_buttons": {
           "$title_panel": "common_dialogs.standard_title_label",
           "$title_size": [ "100% - 14px", 10 ],
@@ -214,99 +157,11 @@
   // ================================================================
 
   //
-  // U1a — view-binding writes a computed #slot_x, offset reads it.
-  // Canvas is a stack_panel because `panel` doesn't accept
-  // collection_name (that was the JSON crash the last round).
+  // U1 is settled — dead. All three variants (view binding to
+  // custom #slot_x, property_bag, view binding to #offset_x) either
+  // failed cleanly (v1) or crashed the file (v2/v3). Recorded as a
+  // rejected pattern; migration commits to Path B (fixed pool).
   //
-  "proof_u1a_canvas": {
-    "type": "stack_panel",
-    "size": [ 200, 100 ],
-    "orientation": "vertical",
-    "anchor_from": "center",
-    "anchor_to": "center",
-    "collection_name": "form_buttons",
-    "controls": [
-      { "slot@server_form.proof_u1a_slot": {} }
-    ]
-  },
-  "proof_u1a_slot": {
-    "type": "image",
-    "size": [ 20, 4 ],
-    "texture": "textures/ui/White",
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "offset": [ "#slot_x", 0 ],
-    "bindings": [
-      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" },
-      {
-        "binding_type": "view",
-        "source_property_name": "(#collection_index * 30)",
-        "target_property_name": "#slot_x"
-      }
-    ]
-  },
-
-  //
-  // U1b — property_bag maps #slot_x to a computed expression.
-  //
-  "proof_u1b_canvas": {
-    "type": "stack_panel",
-    "size": [ 200, 100 ],
-    "orientation": "vertical",
-    "anchor_from": "center",
-    "anchor_to": "center",
-    "collection_name": "form_buttons",
-    "controls": [
-      { "slot@server_form.proof_u1b_slot": {} }
-    ]
-  },
-  "proof_u1b_slot": {
-    "type": "image",
-    "size": [ 20, 4 ],
-    "texture": "textures/ui/White",
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "property_bag": {
-      "#slot_x": "(#collection_index * 30)"
-    },
-    "offset": [ "#slot_x", 0 ],
-    "bindings": [
-      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
-    ]
-  },
-
-  //
-  // U1c — same view-binding technique as U1a but targeting the
-  // magic `#offset_x` property directly (if Bedrock recognises that
-  // as a first-class offset override). Different target from U1a's
-  // custom `#slot_x`.
-  //
-  "proof_u1c_canvas": {
-    "type": "stack_panel",
-    "size": [ 200, 100 ],
-    "orientation": "vertical",
-    "anchor_from": "center",
-    "anchor_to": "center",
-    "collection_name": "form_buttons",
-    "controls": [
-      { "slot@server_form.proof_u1c_slot": {} }
-    ]
-  },
-  "proof_u1c_slot": {
-    "type": "image",
-    "size": [ 20, 4 ],
-    "texture": "textures/ui/White",
-    "anchor_from": "top_left",
-    "anchor_to": "top_left",
-    "bindings": [
-      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" },
-      {
-        "binding_type": "view",
-        "source_property_name": "(#collection_index * 30)",
-        "target_property_name": "#offset_x"
-      }
-    ]
-  },
 
   //
   // U4 — direct texture path, no bindings.

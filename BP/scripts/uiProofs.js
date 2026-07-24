@@ -16,59 +16,28 @@ import { FNAF_ROOT_PREFIX } from "./blueprintTypes.js";
 // the result and report it back.
 
 const MENU_PREFIX  = FNAF_ROOT_PREFIX + "PROOF_MENU|";
-const U1A_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1A|"; // view binding
-const U1B_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1B|"; // property_bag
-const U1C_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1C|"; // inline math in offset
 const U4_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U4|";
 const U8_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U8|";
+// U1 removed — all three variants failed or crashed. Path A rejected.
 
 function openMenu(player) {
   const form = new ActionFormData()
     .title(`${MENU_PREFIX}JSON-UI proofs`)
     .body(
-      "§7Select an experiment. Each opens its own form with a\n" +
-      "§7PASS/FAIL rubric. Report outcomes for the vault."
+      "§7U1 is settled — Path A rejected.\n" +
+      "§7Remaining tests confirm building blocks for Path B."
     )
-    .button("§bU1a §7· offset via view-binding")
-    .button("§bU1b §7· offset via property_bag")
-    .button("§bU1c §7· inline math in offset array")
-    .button("§bU4  §7· textures/ui/White availability")
-    .button("§bU8  §7· image vs button visibility split")
+    .button("§bU4 §7· textures/ui/White availability")
+    .button("§bU8 §7· image vs button visibility split")
     .button("§7Close");
 
   form.show(player).then(res => {
     if (res.canceled || res.selection == null) return;
     switch (res.selection) {
-      case 0: return system.run(() => openU1(player, U1A_PREFIX, "view binding"));
-      case 1: return system.run(() => openU1(player, U1B_PREFIX, "property_bag"));
-      case 2: return system.run(() => openU1(player, U1C_PREFIX, "inline math"));
-      case 3: return system.run(() => openU4(player));
-      case 4: return system.run(() => openU8(player));
+      case 0: return system.run(() => openU4(player));
+      case 1: return system.run(() => openU8(player));
     }
   }).catch(() => {});
-}
-
-// -- U1: can `offset` on a per-item control be bound to a runtime value
-// derived from #collection_index? --------------------------------------
-//
-// Three RP-side variants exist behind U1A/U1B/U1C prefixes; each tries
-// a different JSON-UI mechanism. Same PASS/FAIL rubric for all three.
-// We send 5 buttons; the JSON-UI positions them via its own mechanism.
-
-function openU1(player, prefix, variantLabel) {
-  const form = new ActionFormData()
-    .title(`${prefix}Offset · ${variantLabel}`)
-    .body(
-      `§7Variant: §f${variantLabel}\n\n` +
-      "§7Five slots. If they §fspread horizontally§7 across the black\n" +
-      "§7canvas, §aPASS§7 — this variant supports per-item offset.\n\n" +
-      "§7If they §fstack at x=0§7 (one visible tall column), §cFAIL§7\n" +
-      "§7— this variant doesn't work; try the next."
-    );
-  for (let i = 0; i < 5; i++) {
-    form.button(`slot ${i}`, "textures/ui/electrical_map/wall");
-  }
-  form.show(player).catch(() => {});
 }
 
 // -- U4: does the stock texture textures/ui/White exist? --------------
