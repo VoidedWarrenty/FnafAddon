@@ -94,6 +94,10 @@ bare image + bare button.
 - **Vanilla fallback breaks silently** if the root-prefix gate doesn't
   catch every custom form title. Two custom forms visible at once (the
   "double-panel" bug). Enforce a single root prefix.
+- **Root-prefix invariant**: any title carrying the root prefix MUST
+  have a matching per-form wrapper. Otherwise the form opens as an
+  empty modal that dismisses instantly — silent, worse than a crash.
+  See [[docs/lessons-learned/2026-07-24-root-prefix-invariant.md]].
 - **Cannot inject content between chrome layers** — content lives inside
   `$child_control` only. No overlays on the title bar or the close X.
 - **`common_buttons.light_content_button` does NOT resolve** in the

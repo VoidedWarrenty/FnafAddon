@@ -15,7 +15,10 @@ import { FNAF_ROOT_PREFIX } from "./blueprintTypes.js";
 // PASS/FAIL rubric in its own form body so the reader can eyeball
 // the result and report it back.
 
-const MENU_PREFIX  = FNAF_ROOT_PREFIX + "PROOF_MENU|";
+// Menu uses NO custom prefix so it renders via the vanilla default
+// wrapper (default_long_form in server_form.json hides for any title
+// containing FNAF|; the menu is intentionally outside that gate).
+const MENU_PREFIX  = "";
 const U4_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U4|";
 const U8_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U8|";
 // U1 removed — all three variants failed or crashed. Path A rejected.
