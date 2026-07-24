@@ -74,6 +74,7 @@ export function tileForCell(cellValue) {
 // visibility gate. The per-form prefix follows the root.
 export const FNAF_ROOT_PREFIX = "FNAF|";
 export const ELECTRICAL_MAP_PREFIX = FNAF_ROOT_PREFIX + "ELECTRICAL_MAP|";
+export const ANIMATRONIC_EDITOR_PREFIX = FNAF_ROOT_PREFIX + "ANIM_EDITOR|";
 
 // Sentinel "no room" for roomIdGrid (0 = no room, 1..N = real rooms).
 export const NO_ROOM = 0;

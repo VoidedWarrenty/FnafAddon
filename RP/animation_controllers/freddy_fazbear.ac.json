@@ -7,37 +7,37 @@
         "idle": {
           "animations": ["idle"],
           "transitions": [
-            { "perform": "q.actor_property('fnaf:anim') == 'perform'" },
-            { "statue":  "q.actor_property('fnaf:anim') == 'statue'"  },
-            { "walk":    "q.actor_property('fnaf:anim') == 'walk'"    },
-            { "chase":   "q.actor_property('fnaf:anim') == 'chase'"   },
-            { "attack":  "q.actor_property('fnaf:anim') == 'attack'"  },
-            { "sit":     "q.actor_property('fnaf:anim') == 'sit'"     }
+            { "perform": "q.property('fnaf:anim') == 'perform'" },
+            { "statue":  "q.property('fnaf:anim') == 'statue'"  },
+            { "walk":    "q.property('fnaf:anim') == 'walk'"    },
+            { "chase":   "q.property('fnaf:anim') == 'chase'"   },
+            { "attack":  "q.property('fnaf:anim') == 'attack'"  },
+            { "sit":     "q.property('fnaf:anim') == 'sit'"     }
           ]
         },
         "perform": {
           "animations": ["perform"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'perform'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'perform'" }]
         },
         "statue": {
           "animations": ["statue"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'statue'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'statue'" }]
         },
         "walk": {
           "animations": ["walk"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'walk'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'walk'" }]
         },
         "chase": {
           "animations": ["chase"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'chase'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'chase'" }]
         },
         "attack": {
           "animations": ["attack"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'attack'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'attack'" }]
         },
         "sit": {
           "animations": ["sit"],
-          "transitions": [{ "idle": "q.actor_property('fnaf:anim') != 'sit'" }]
+          "transitions": [{ "idle": "q.property('fnaf:anim') != 'sit'" }]
         }
       }
     }

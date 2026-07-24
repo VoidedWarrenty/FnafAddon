@@ -51,6 +51,25 @@
         }
       },
       {
+        "anim_editor_long_form@common_dialogs.main_panel_no_buttons": {
+          "$title_panel": "common_dialogs.standard_title_label",
+          "$title_size": [ "100% - 14px", 10 ],
+          "size": [ 180, 176 ],
+          "$text_name": "#title_text",
+          "$title_text_binding_type": "none",
+          "$child_control": "server_form.anim_editor_canvas",
+          "layer": 2,
+          "bindings": [
+            { "binding_name": "#title_text" },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#title_text - 'FNAF|ANIM_EDITOR|') = #title_text))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
         "proof_u4_long_form@common_dialogs.main_panel_no_buttons": {
           "$title_panel": "common_dialogs.standard_title_label",
           "$title_size": [ "100% - 14px", 10 ],
@@ -84,6 +103,88 @@
               "binding_type": "view",
               "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U8|') = #title_text))",
               "target_property_name": "#visible"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  // ================================================================
+  //   ANIMATRONIC EDITOR (compact floating-style panel)
+  //
+  //   ActionForm supplies 9 buttons in fixed order:
+  //     0: rotation -    1: rotation value    2: rotation +
+  //     3: anim prev     4: anim value        5: anim next
+  //     6: misc-1        7: misc-2            8: misc-3
+  //
+  //   Layout: title chrome (from Skyls' main_panel_no_buttons) + three
+  //   labeled sections stacked vertically. Each section is a 3-cell grid
+  //   that iterates the SAME form_buttons collection but is scoped to
+  //   its slice via a per-cell $collection_index override.
+  // ================================================================
+
+  //
+  // Verified pattern from electrical_canvas: one `type: grid` iterating the
+  // whole form_buttons collection in order. Custom per-cell index overrides
+  // (property_bag, view-bound $slot_index) all failed in U1/U2/U3 — do not
+  // reintroduce them. Section labels sit above the grid because
+  // interleaving them between grid rows requires exactly that failed
+  // pattern; buttons self-label instead (e.g. "◄" / "Idle" / "►").
+  //
+  "anim_editor_canvas": {
+    "type": "panel",
+    "size": [ "100% - 8px", "100% - 22px" ],
+    "anchor_from": "top_middle",
+    "anchor_to": "top_middle",
+    "offset": [ 0, 4 ],
+    "controls": [
+      {
+        "grid_wrap": {
+          "type": "grid",
+          "size": [ 156, 90 ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "grid_dimensions": [ 3, 3 ],
+          "grid_item_template": "server_form.anim_editor_cell",
+          "collection_name": "form_buttons"
+        }
+      }
+    ]
+  },
+
+  "anim_editor_cell": {
+    "type": "panel",
+    "size": [ 52, 30 ],
+    "controls": [
+      {
+        "cell_label": {
+          "type": "label",
+          "size": [ "100% - 4px", "100% - 4px" ],
+          "layer": 1,
+          "text_alignment": "center",
+          "color": [ 1, 1, 1 ],
+          "shadow": true,
+          "bindings": [
+            {
+              "binding_name": "#form_button_text",
+              "binding_name_override": "#text",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            }
+          ]
+        }
+      },
+      {
+        "cell_hitbox": {
+          "type": "button",
+          "size": [ "100%", "100%" ],
+          "layer": 2,
+          "$pressed_button_name": "button.form_button_click",
+          "bindings": [
+            {
+              "binding_type": "collection_details",
+              "binding_collection_name": "form_buttons"
             }
           ]
         }
