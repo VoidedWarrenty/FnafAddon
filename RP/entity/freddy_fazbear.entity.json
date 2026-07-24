@@ -31,8 +31,7 @@
       "render_controllers": ["controller.render.default"],
 
       "spawn_egg": {
-        "base_color": "#4a2b17",
-        "overlay_color": "#f2c98d"
+        "texture": "fnaf_spawn_egg_freddy_fazbear"
       }
     }
   }

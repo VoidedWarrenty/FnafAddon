@@ -7,6 +7,9 @@
     },
     "fnaf_breaker_box_item": {
       "textures": "textures/items/fnaf/breaker_box"
+    },
+    "fnaf_spawn_egg_freddy_fazbear": {
+      "textures": "textures/items/fnaf/spawn_egg_freddy_fazbear"
     }
   }
 }
