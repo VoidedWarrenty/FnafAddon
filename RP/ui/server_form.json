@@ -158,10 +158,20 @@
     "size": [ 52, 30 ],
     "controls": [
       {
+        "cell_bg": {
+          "type": "image",
+          "size": [ "100% - 2px", "100% - 2px" ],
+          "layer": 1,
+          "texture": "textures/ui/White",
+          "color": [ 0.18, 0.18, 0.20 ],
+          "alpha": 0.85
+        }
+      },
+      {
         "cell_label": {
           "type": "label",
           "size": [ "100% - 4px", "100% - 4px" ],
-          "layer": 1,
+          "layer": 2,
           "text_alignment": "center",
           "color": [ 1, 1, 1 ],
           "shadow": true,
@@ -179,7 +189,7 @@
         "cell_hitbox": {
           "type": "button",
           "size": [ "100%", "100%" ],
-          "layer": 2,
+          "layer": 3,
           "$pressed_button_name": "button.form_button_click",
           "bindings": [
             {

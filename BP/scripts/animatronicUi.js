@@ -54,8 +54,11 @@ function openEditor(player, entity, entry) {
   const yaw = currentYaw(entity);
   const anim = entity.getProperty(entry.property);
 
+  // Put the prefix AFTER the label so the visible portion of the title bar
+  // (which truncates on the right) reads clean. The JSON-UI gate uses
+  // substring match on the prefix, so position doesn't matter.
   const form = new ActionFormData()
-    .title(`${ANIMATRONIC_EDITOR_PREFIX}${entry.label}`)
+    .title(`§9Editor · §f${entry.label}     ${ANIMATRONIC_EDITOR_PREFIX}`)
     .button("§l−")             // 0
     .button(`§f${yaw}°`)       // 1  (display-only)
     .button("§l+")             // 2
