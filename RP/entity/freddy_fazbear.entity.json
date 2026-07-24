@@ -10,7 +10,7 @@
       },
 
       "textures": {
-        "default": "textures/entity/fnaf/bagfreddyfazbear"
+        "default": "textures/entity/fnaf/fred"
       },
 
       "animations": {
