@@ -2,24 +2,10 @@
   "namespace": "server_form",
 
   //
-  // Adapted from Skyls' working sample
-  // (skyls.de/samples/ui4/RP/ui/server_form.json).
-  //
-  // The pattern: override `long_form` (the whole ActionForm root, NOT
-  // the inner buttons panel) with a `panel` containing two siblings.
-  // Both inherit from `common_dialogs.main_panel_no_buttons` — that
-  // gives us the native chrome (grey border, title bar, close X)
-  // without the vanilla button stack, and it exposes a `$child_control`
-  // variable that we swap between vanilla and our custom canvas.
-  //
-  // Visibility on each sibling is a straight title-string check via
-  // MoLang subtraction. The bindings live on the WRAPPER, not inside
-  // the collection-iterating buttons_panel, so scope isn't a problem
-  // this time.
-  //
-  // Non-electrical forms → default_long_form visible → $child_control =
-  // vanilla `server_form.long_form_panel` → vanilla button stack. Zero
-  // interference with blueprint editor or unconfigured breaker panel.
+  // Every custom title in this addon starts with FNAF|. The vanilla
+  // fallback wrapper is hidden whenever the title contains FNAF|; each
+  // per-form wrapper further gates on its inner sub-prefix. Skyls'
+  // common_dialogs.main_panel_no_buttons still provides the chrome.
   //
 
   "long_form": {
@@ -39,7 +25,7 @@
             { "binding_name": "#title_text" },
             {
               "binding_type": "view",
-              "source_property_name": "((#title_text - 'ELECTRICAL_MAP|') = #title_text)",
+              "source_property_name": "((#title_text - 'FNAF|') = #title_text)",
               "target_property_name": "#visible"
             }
           ]
@@ -58,26 +44,64 @@
             { "binding_name": "#title_text" },
             {
               "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'ELECTRICAL_MAP|') = #title_text))",
+              "source_property_name": "(not ((#title_text - 'FNAF|ELECTRICAL_MAP|') = #title_text))",
               "target_property_name": "#visible"
             }
           ]
         }
       },
       {
-        "proof_u1_long_form@common_dialogs.main_panel_no_buttons": {
+        "proof_u1a_long_form@common_dialogs.main_panel_no_buttons": {
           "$title_panel": "common_dialogs.standard_title_label",
           "$title_size": [ "100% - 14px", 10 ],
           "size": [ 340, 280 ],
           "$text_name": "#title_text",
           "$title_text_binding_type": "none",
-          "$child_control": "server_form.proof_u1_canvas",
+          "$child_control": "server_form.proof_u1a_canvas",
           "layer": 2,
           "bindings": [
             { "binding_name": "#title_text" },
             {
               "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'PROOF_U1|') = #title_text))",
+              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1A|') = #title_text))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "proof_u1b_long_form@common_dialogs.main_panel_no_buttons": {
+          "$title_panel": "common_dialogs.standard_title_label",
+          "$title_size": [ "100% - 14px", 10 ],
+          "size": [ 340, 280 ],
+          "$text_name": "#title_text",
+          "$title_text_binding_type": "none",
+          "$child_control": "server_form.proof_u1b_canvas",
+          "layer": 2,
+          "bindings": [
+            { "binding_name": "#title_text" },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1B|') = #title_text))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "proof_u1c_long_form@common_dialogs.main_panel_no_buttons": {
+          "$title_panel": "common_dialogs.standard_title_label",
+          "$title_size": [ "100% - 14px", 10 ],
+          "size": [ 340, 280 ],
+          "$text_name": "#title_text",
+          "$title_text_binding_type": "none",
+          "$child_control": "server_form.proof_u1c_canvas",
+          "layer": 2,
+          "bindings": [
+            { "binding_name": "#title_text" },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U1C|') = #title_text))",
               "target_property_name": "#visible"
             }
           ]
@@ -96,7 +120,7 @@
             { "binding_name": "#title_text" },
             {
               "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'PROOF_U4|') = #title_text))",
+              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U4|') = #title_text))",
               "target_property_name": "#visible"
             }
           ]
@@ -115,7 +139,7 @@
             { "binding_name": "#title_text" },
             {
               "binding_type": "view",
-              "source_property_name": "(not ((#title_text - 'PROOF_U8|') = #title_text))",
+              "source_property_name": "(not ((#title_text - 'FNAF|PROOF_U8|') = #title_text))",
               "target_property_name": "#visible"
             }
           ]
@@ -124,7 +148,9 @@
     ]
   },
 
-  // -- Custom canvas: 32x24 grid of tile cells, one per form button --
+  // ================================================================
+  //   ELECTRICAL PANEL (production form)
+  // ================================================================
 
   "electrical_canvas": {
     "type": "grid",
@@ -135,14 +161,6 @@
     "grid_item_template": "server_form.electrical_cell",
     "collection_name": "form_buttons"
   },
-
-  // -- One cell: 10x10 panel with a tile image + click hitbox --
-  // The image reads the button's texture path (`#form_button_texture`)
-  // via a collection binding renamed to `#texture`. The hitbox is a
-  // `common_buttons.light_text_button` — the ACTUAL base that resolves
-  // in current Bedrock (not light_content_button, which doesn't).
-  // `binding_type: collection_details` on the hitbox is what wires the
-  // click back to the form's button-click event with the right index.
 
   "electrical_cell": {
     "type": "panel",
@@ -191,46 +209,33 @@
     ]
   },
 
-  //
-  // =========================================================
-  //   PROOF-OF-CONCEPT experiments  (see docs/phase-0-inventory.md)
-  //   Each canvas + slot is independent; failures on one don't
-  //   affect the others or the electrical form.
-  // =========================================================
-  //
+  // ================================================================
+  //   PROOF EXPERIMENTS (docs/phase-0-inventory.md)
+  // ================================================================
 
-  // -- U1 · offset binding to derived value ---------------------------
-  // The proof: five slots, each with `offset[0]` computed from
-  // `#collection_index * 30`. Written via a `view` binding into a local
-  // property that `offset` reads. If Bedrock resolves the arithmetic
-  // and applies it, the slots land at x = 0, 30, 60, 90, 120. If it
-  // doesn't, they all sit at x = 0.
-
-  "proof_u1_canvas": {
+  //
+  // U1a — view-binding a local property, offset reads the property.
+  // (This is what shipped last time and failed. Kept for a control.)
+  //
+  "proof_u1a_canvas": {
     "type": "panel",
     "size": [ 200, 100 ],
     "anchor_from": "center",
     "anchor_to": "center",
     "controls": [
-      {
-        "slot@server_form.proof_u1_slot": {}
-      }
+      { "slot@server_form.proof_u1a_slot": {} }
     ],
     "collection_name": "form_buttons"
   },
-
-  "proof_u1_slot": {
+  "proof_u1a_slot": {
     "type": "image",
     "size": [ 20, 20 ],
-    "texture": "textures/ui/electrical_map/wall",
+    "texture": "textures/ui/White",
     "anchor_from": "top_left",
     "anchor_to": "top_left",
     "offset": [ "#slot_x", 40 ],
     "bindings": [
-      {
-        "binding_type": "collection_details",
-        "binding_collection_name": "form_buttons"
-      },
+      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" },
       {
         "binding_type": "view",
         "source_property_name": "(#collection_index * 30)",
@@ -239,10 +244,62 @@
     ]
   },
 
-  // -- U4 · textures/ui/White availability ----------------------------
-  // Zero magic — just references the stock path directly and centres
-  // it. If the client resolves the path we see a solid white 32×32.
+  //
+  // U1b — property_bag with a computed expression.
+  //
+  "proof_u1b_canvas": {
+    "type": "panel",
+    "size": [ 200, 100 ],
+    "anchor_from": "center",
+    "anchor_to": "center",
+    "controls": [
+      { "slot@server_form.proof_u1b_slot": {} }
+    ],
+    "collection_name": "form_buttons"
+  },
+  "proof_u1b_slot": {
+    "type": "image",
+    "size": [ 20, 20 ],
+    "texture": "textures/ui/White",
+    "anchor_from": "top_left",
+    "anchor_to": "top_left",
+    "property_bag": {
+      "#slot_x": "(#collection_index * 30)"
+    },
+    "offset": [ "#slot_x", 40 ],
+    "bindings": [
+      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
+    ]
+  },
 
+  //
+  // U1c — arithmetic expression directly inside the offset array.
+  //
+  "proof_u1c_canvas": {
+    "type": "panel",
+    "size": [ 200, 100 ],
+    "anchor_from": "center",
+    "anchor_to": "center",
+    "controls": [
+      { "slot@server_form.proof_u1c_slot": {} }
+    ],
+    "collection_name": "form_buttons"
+  },
+  "proof_u1c_slot": {
+    "type": "image",
+    "size": [ 20, 20 ],
+    "texture": "textures/ui/White",
+    "anchor_from": "top_left",
+    "anchor_to": "top_left",
+    "offset": [ "(#collection_index * 30)", 40 ],
+    "bindings": [
+      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
+    ]
+  },
+
+  //
+  // U4 — direct texture path, no bindings.
+  //
   "proof_u4_canvas": {
     "type": "panel",
     "size": [ 100, 100 ],
@@ -261,14 +318,11 @@
     ]
   },
 
-  // -- U8 · image visibility independent of button visibility ---------
-  // For each collection item the slot renders BOTH an always-visible
-  // white bar AND a hitbox button whose visibility is gated on the
-  // button text being non-empty (`#form_button_text != ''`). Five
-  // items are sent (three with text "on", two with text "" — see
-  // uiProofs.js). Expected pass: five bars visible, three of them
-  // capture clicks.
-
+  //
+  // U8 — every slot renders bar + hitbox; hitbox visibility depends on
+  // whether the button's text is "keep" (kept) vs "hide" (hidden hitbox
+  // but bar still rendered).
+  //
   "proof_u8_canvas": {
     "type": "stack_panel",
     "orientation": "vertical",
@@ -277,13 +331,10 @@
     "anchor_to": "top_middle",
     "offset": [ 0, 20 ],
     "controls": [
-      {
-        "slot@server_form.proof_u8_slot": {}
-      }
+      { "slot@server_form.proof_u8_slot": {} }
     ],
     "collection_name": "form_buttons"
   },
-
   "proof_u8_slot": {
     "type": "panel",
     "size": [ "100%", 16 ],
@@ -295,12 +346,9 @@
           "layer": 1,
           "anchor_from": "center",
           "anchor_to": "center",
-          "texture": "textures/ui/electrical_map/wall",
+          "texture": "textures/ui/White",
           "bindings": [
-            {
-              "binding_type": "collection_details",
-              "binding_collection_name": "form_buttons"
-            }
+            { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
           ]
         }
       },
@@ -319,7 +367,7 @@
             },
             {
               "binding_type": "view",
-              "source_property_name": "(not (#label = ''))",
+              "source_property_name": "(#label = 'keep')",
               "target_property_name": "#visible"
             }
           ]

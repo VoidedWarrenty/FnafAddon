@@ -60,7 +60,11 @@ export function tileForCell(cellValue) {
 }
 
 // Title prefix that gates the JSON-UI grid override.
-export const ELECTRICAL_MAP_PREFIX = "ELECTRICAL_MAP|";
+// Every custom form title in this addon must start with FNAF_ROOT_PREFIX
+// so the JSON-UI vanilla-fallback wrapper can be excluded via a single
+// visibility gate. The per-form prefix follows the root.
+export const FNAF_ROOT_PREFIX = "FNAF|";
+export const ELECTRICAL_MAP_PREFIX = FNAF_ROOT_PREFIX + "ELECTRICAL_MAP|";
 
 // Sentinel "no room" for roomIdGrid (0 = no room, 1..N = real rooms).
 export const NO_ROOM = 0;

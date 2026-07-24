@@ -1,10 +1,12 @@
 import { world, system } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
+import { FNAF_ROOT_PREFIX } from "./blueprintTypes.js";
 
 // JSON-UI proof-of-concept experiments per docs/phase-0-inventory.md
 // section "UNKNOWN / TEST REQUIRED". Each experiment opens a form
-// whose title starts with a distinct prefix; the JSON-UI override in
-// RP/ui/server_form.json gates a custom layout on that prefix.
+// whose title starts with a distinct prefix under the shared
+// FNAF_ROOT_PREFIX; the JSON-UI override in RP/ui/server_form.json
+// gates a custom layout on that prefix.
 //
 // Trigger from chat:
 //   /scriptevent fnaf:proofs
@@ -13,30 +15,35 @@ import { ActionFormData } from "@minecraft/server-ui";
 // PASS/FAIL rubric in its own form body so the reader can eyeball
 // the result and report it back.
 
-const MENU_PREFIX = "PROOF_MENU|";
-const U1_PREFIX = "PROOF_U1|";
-const U4_PREFIX = "PROOF_U4|";
-const U8_PREFIX = "PROOF_U8|";
+const MENU_PREFIX  = FNAF_ROOT_PREFIX + "PROOF_MENU|";
+const U1A_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1A|"; // view binding
+const U1B_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1B|"; // property_bag
+const U1C_PREFIX   = FNAF_ROOT_PREFIX + "PROOF_U1C|"; // inline math in offset
+const U4_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U4|";
+const U8_PREFIX    = FNAF_ROOT_PREFIX + "PROOF_U8|";
 
 function openMenu(player) {
   const form = new ActionFormData()
     .title(`${MENU_PREFIX}JSON-UI proofs`)
     .body(
-      "§7Select an experiment to run. Each opens its own form with a\n" +
-      "§7PASS/FAIL rubric. Report the outcome so it can be recorded\n" +
-      "§7into the vault."
+      "§7Select an experiment. Each opens its own form with a\n" +
+      "§7PASS/FAIL rubric. Report outcomes for the vault."
     )
-    .button("§bU1 §7· offset binding to derived value")
-    .button("§bU4 §7· textures/ui/White availability")
-    .button("§bU8 §7· image visibility independent of button")
+    .button("§bU1a §7· offset via view-binding")
+    .button("§bU1b §7· offset via property_bag")
+    .button("§bU1c §7· inline math in offset array")
+    .button("§bU4  §7· textures/ui/White availability")
+    .button("§bU8  §7· image vs button visibility split")
     .button("§7Close");
 
   form.show(player).then(res => {
     if (res.canceled || res.selection == null) return;
     switch (res.selection) {
-      case 0: return system.run(() => openU1(player));
-      case 1: return system.run(() => openU4(player));
-      case 2: return system.run(() => openU8(player));
+      case 0: return system.run(() => openU1(player, U1A_PREFIX, "view binding"));
+      case 1: return system.run(() => openU1(player, U1B_PREFIX, "property_bag"));
+      case 2: return system.run(() => openU1(player, U1C_PREFIX, "inline math"));
+      case 3: return system.run(() => openU4(player));
+      case 4: return system.run(() => openU8(player));
     }
   }).catch(() => {});
 }
@@ -44,20 +51,19 @@ function openMenu(player) {
 // -- U1: can `offset` on a per-item control be bound to a runtime value
 // derived from #collection_index? --------------------------------------
 //
-// The JSON-UI side (see RP/ui/server_form.json) lays out 5 slots inside
-// a fixed collection, each intended to sit at x = collection_index * 30.
-// We only need to send 5 buttons — texture doesn't matter, index does.
+// Three RP-side variants exist behind U1A/U1B/U1C prefixes; each tries
+// a different JSON-UI mechanism. Same PASS/FAIL rubric for all three.
+// We send 5 buttons; the JSON-UI positions them via its own mechanism.
 
-function openU1(player) {
+function openU1(player, prefix, variantLabel) {
   const form = new ActionFormData()
-    .title(`${U1_PREFIX}Offset binding`)
+    .title(`${prefix}Offset · ${variantLabel}`)
     .body(
-      "§7If you see FIVE white squares §fspread horizontally§7 across\n" +
-      "§7the black canvas (roughly evenly spaced), §aU1 PASSES§7 —\n" +
-      "§7per-item offset binding is available (Path A viable).\n\n" +
-      "§7If you see FIVE white squares §fstacked on top of each other§7\n" +
-      "§7or one visible square, §cU1 FAILS§7 — offset binding didn't\n" +
-      "§7resolve, we must use a fixed pre-positioned pool (Path B)."
+      `§7Variant: §f${variantLabel}\n\n` +
+      "§7Five slots. If they §fspread horizontally§7 across the black\n" +
+      "§7canvas, §aPASS§7 — this variant supports per-item offset.\n\n" +
+      "§7If they §fstack at x=0§7 (one visible tall column), §cFAIL§7\n" +
+      "§7— this variant doesn't work; try the next."
     );
   for (let i = 0; i < 5; i++) {
     form.button(`slot ${i}`, "textures/ui/electrical_map/wall");
@@ -98,18 +104,18 @@ function openU8(player) {
   const form = new ActionFormData()
     .title(`${U8_PREFIX}Split visibility`)
     .body(
-      "§7If you see §fFIVE white bars§7 stacked vertically but only\n" +
-      "§7THREE of them are highlighted or interactive on hover,\n" +
-      "§aU8 PASSES§7 — image and button visibility are independent.\n\n" +
-      "§7If either all five or none of them are interactive, or fewer\n" +
-      "§7than five images render, §cU8 FAILS§7 — decorative and\n" +
-      "§7interactive layers must live in separate control pools."
+      "§7Five slots are sent — three labelled §fkeep§7, two labelled\n" +
+      "§fhide§7. Every slot renders both an always-visible white bar\n" +
+      "§7and a hitbox whose visibility depends on the label.\n\n" +
+      "§aPASS§7 — you see FIVE white bars but only THREE respond to\n" +
+      "§7taps (bars labelled 'hide' render but do nothing).\n\n" +
+      "§cFAIL§7 — fewer than five bars OR all five are interactive."
     );
-  form.button("on", "");
-  form.button("",   "");
-  form.button("on", "");
-  form.button("",   "");
-  form.button("on", "");
+  form.button("keep", "");
+  form.button("hide", "");
+  form.button("keep", "");
+  form.button("hide", "");
+  form.button("keep", "");
   form.show(player).catch(() => {});
 }
 
