@@ -111,13 +111,17 @@ export function detectRooms(grid) {
     if (!visited[i] && !isBarrier(grid, i)) grid[i] = CELL.EMPTY;
   }
 
-  // Reveal doors and record which rooms each door touches.
+  // Capture door adjacency for the electrical circuit topology, then
+  // clear DOOR cells to EMPTY so the render shows a natural gap in
+  // the wall rather than a yellow marker (per 2026-07-24 device
+  // feedback: "stop marking openings in the walls"). The door's
+  // connecting-room info survives on doorLinks for the future
+  // switch/circuit system even though the cell no longer renders.
   const doorLinks = new Map();
   for (let cy = 0; cy < GRID_H; cy++) {
     for (let cx = 0; cx < GRID_W; cx++) {
       const i = idx(cx, cy);
       if (grid[i] !== CELL.DOOR) continue;
-      // Adjacent room ids from the 4-neighbourhood.
       const near = new Set();
       const nbs = [
         [cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1],
@@ -128,6 +132,7 @@ export function detectRooms(grid) {
         if (rid !== NO_ROOM) near.add(rid);
       }
       if (near.size > 0) doorLinks.set(i, [...near]);
+      grid[i] = CELL.EMPTY;   // wall shows a gap here
     }
   }
 
