@@ -5,6 +5,7 @@ status: verified
 verified_on: 2026-07-24
 engine_version: "@minecraft/server 1.11.0; Bedrock engine 1.21+"
 scope: server_form.long_form → common_dialogs.main_panel_no_buttons chrome
+confidence: verified
 tags: [json-ui, actionform, transport, limitations, verified-research]
 ---
 

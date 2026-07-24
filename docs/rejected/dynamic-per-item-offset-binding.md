@@ -6,6 +6,7 @@ rejected_on: 2026-07-24
 scope: server_form.long_form + common_dialogs.main_panel_no_buttons
 transport: ActionFormData
 adr: [ADR-005]
+confidence: verified
 tags: [json-ui, binding, offset, path-a, rejected]
 ---
 

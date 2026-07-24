@@ -7,11 +7,15 @@
 export const MAP_VERSION = 3;
 
 // Grid resolution. Single tunable — everything downstream reads these.
-// 24x18 = 432 cells (== 432 buttons in the ActionForm). Every module
-// reads GRID_W / GRID_H, so bumping to 32x24 (768) if we want finer
-// detail is a one-line change. Down to 16x12 (192) if it's still slow.
-export const GRID_W = 24;
-export const GRID_H = 18;
+// 16x12 = 192 cells (== 192 buttons in the ActionForm). Optimization
+// milestone per GPT-reviewed decision 2026-07-24 — NOT the destination
+// architecture. See:
+//   docs/rejected/dense-raster-grid-for-panel-ui.md
+//   docs/adr/ADR-006-Separate-Engine-From-Transport.md
+// The destination is a fixed pre-positioned pool of wall + breaker
+// slots that renders no blank interactive cells.
+export const GRID_W = 16;
+export const GRID_H = 12;
 
 // Two cells of exterior padding around the world bbox when computing the
 // world→grid transform.

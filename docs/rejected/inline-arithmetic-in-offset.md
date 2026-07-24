@@ -4,6 +4,7 @@ type: rejected-pattern
 status: rejected
 rejected_on: 2026-07-24
 scope: JSON-UI offset/size arrays — any transport
+confidence: verified
 tags: [json-ui, offset, syntax, rejected]
 ---
 

@@ -8,6 +8,7 @@ import {
   setRoomPowered, getRoomPowered,
 } from "./mapSerializer.js";
 import { syncAllRoomLights } from "./roomLight.js";
+import { begin, end } from "./metrics.js";
 
 // The ActionForm gets exactly GRID_W*GRID_H buttons in row-major order.
 // Every button carries the tile texture for its cell; button text stays
@@ -59,16 +60,24 @@ export function openBreakerForm(player, block) {
   // Emit one button per cell. Buttons that are pure map background use
   // a single space as their label so the JSON-UI grid layout has
   // uniform-sized cells (empty labels get compacted by some clients).
+  begin("pipeline.encodeForm");
+  let interactiveControls = 0;
   for (let i = 0; i < total; i++) {
     const cell = tiles[i];
     if (cell === CELL.BREAKER_ON || cell === CELL.BREAKER_OFF) {
       const m = snap.meta.find(mm => mm.breakerIdx === i);
       const name = m ? m.name : "Breaker";
       form.button(name, tileForCell(cell));
+      interactiveControls++;
     } else {
       form.button(" ", tileForCell(cell));
     }
   }
+  end("pipeline.encodeForm", {
+    controls: total,
+    interactiveControls,
+    decorativeControls: total - interactiveControls,
+  });
 
   form.show(player).then(res => {
     if (res.canceled || res.selection == null) return;

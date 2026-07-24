@@ -6,6 +6,7 @@ verified_on: 2026-07-24
 engine_version: "@minecraft/server 1.11.0; Bedrock engine 1.21+"
 device: iPad client
 scope: JSON-UI ActionFormData transport, per-collection-item icon
+confidence: verified
 tags: [json-ui, binding, texture, verified]
 ---
 

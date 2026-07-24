@@ -14,6 +14,27 @@ The Render Model is the load-bearing contract between the engine
 
 ## Non-negotiable rules
 
+### Determinism
+
+**Given identical Blueprint, Device State, and RendererCapabilities,
+the Render Model must be identical.** Bit-for-bit reproducible.
+
+No transport-specific logic may influence Render Model generation.
+No source of randomness (timestamps, `Math.random`, iteration order
+over unordered collections, session-scoped counters) is permitted
+during the Blueprint → Geometry Engine → Device Renderer → Render
+Model pipeline.
+
+Rationale: guarantees reproducible rendering across transports and
+across sessions. Two encoders consuming the same model produce
+comparable output. A regression in the model is directly attributable
+to a change in blueprint, device state, or capabilities — never to
+"the render happened to run in a different order this time."
+
+This rule is formalized by ADR-007 (planned).
+
+### Transport agnosticism
+
 The Render Model **may not** contain any of:
 
 - JSON-UI binding names

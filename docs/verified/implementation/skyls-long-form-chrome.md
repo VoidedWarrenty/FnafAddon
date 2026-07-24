@@ -7,6 +7,7 @@ engine_version: "@minecraft/server 1.11.0; Bedrock engine 1.21+"
 device: iPad client
 scope: JSON-UI ActionFormData transport
 source: https://skyls.de/samples/ui4/RP/ui/server_form.json
+confidence: verified
 tags: [json-ui, server-form, chrome, title-gating, verified]
 ---
 

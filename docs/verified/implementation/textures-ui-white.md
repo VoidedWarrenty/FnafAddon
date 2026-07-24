@@ -7,6 +7,7 @@ engine_version: "@minecraft/server 1.11.0; Bedrock engine 1.21+"
 device: iPad client
 scope: JSON-UI image element, any screen
 source_experiment: U4
+confidence: verified
 tags: [json-ui, texture, stock-asset, verified]
 ---
 

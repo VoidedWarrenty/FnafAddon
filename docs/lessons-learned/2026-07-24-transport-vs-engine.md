@@ -2,6 +2,7 @@
 title: Don't reject engine capabilities based on transport limitations
 type: lesson-learned
 date: 2026-07-24
+confidence: verified
 tags: [architecture, transport, engine, scope, judgment]
 ---
 

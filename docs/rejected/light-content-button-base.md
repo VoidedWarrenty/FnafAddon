@@ -4,6 +4,7 @@ type: rejected-pattern
 status: rejected
 rejected_on: 2026-07-24
 scope: current Bedrock JSON-UI (engine 1.21+)
+confidence: verified
 tags: [json-ui, button, rejected]
 ---
 

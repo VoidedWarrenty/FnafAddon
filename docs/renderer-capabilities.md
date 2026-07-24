@@ -9,12 +9,22 @@ adr: [ADR-006]
 # RendererCapabilities Contract
 
 `RendererCapabilities` is the reverse contract of the Render Model:
-the encoder tells the renderer what it can and cannot draw, so the
-renderer adapts before producing a model rather than the encoder
-truncating silently.
+the encoder declares what it **can** draw, so the renderer adapts
+before producing a model rather than the encoder truncating silently.
 
 Per ADR-006, transport constraints must **never** leak upward into
 engine logic. This object is the sanctioned channel.
+
+## Framing
+
+Capabilities are described **positively**. A flag names what a
+transport supports, never what it lacks. This lets future transports
+add richer capabilities without redesigning the interface, and lets a
+renderer adapt by enabling optional pathways when they're available.
+
+A missing capability is expressed by the absence of the flag or the
+flag being `false`. There is no "unsupported" or "cannot" naming in
+the contract.
 
 ## Non-negotiable rules
 
@@ -24,8 +34,7 @@ engine logic. This object is the sanctioned channel.
   simplification choices. It may not consult transport internals.
 - If geometry exceeds an advertised capacity, the encoder must fail
   loudly (raise a warning on the Render Model, refuse to draw, or
-  both) — never silently truncate. See
-  Performance-and-Troubleshooting.md.
+  both) — never silently truncate.
 
 ## Shape
 
@@ -33,49 +42,53 @@ engine logic. This object is the sanctioned channel.
 /**
  * @typedef {Object} RendererCapabilities
  *
- * @property {number} maxWalls
- *   Hard ceiling on RenderWall count the encoder can transport.
+ * ==== Capabilities (positive framing) ====
  *
- * @property {number} maxBreakers
- *   Ceiling on RenderBreaker count.
+ * @property {boolean} supportsDynamicPositioning
+ *   Per-item runtime offset. When true, encoders can place items at
+ *   arbitrary computed positions. When false, the renderer uses a
+ *   fixed-slot pool at pre-declared positions.
  *
- * @property {number} maxIcons
- *   Ceiling on RenderIcon count.
+ * @property {boolean} supportsDynamicSizing
+ *   Per-item runtime size. When true, item dimensions may vary
+ *   independently per instance.
  *
- * @property {number} maxLabels
- *   Ceiling on RenderLabel count.
+ * @property {boolean} supportsColorTint
+ *   Encoder can tint a base texture via a color property, letting one
+ *   texture serve multiple abstract colors.
  *
- * @property {number} maxPolygons
- *   Ceiling on RenderPolygon count.
+ * @property {boolean} supportsLayeredImages
+ *   Encoder can composite multiple images per item with independent
+ *   layer ordering.
  *
- * @property {number} viewportWidthPx
- *   The viewport size the encoder can host. Renderer scales its
- *   world→viewport transform to fit.
- * @property {number} viewportHeightPx
+ * @property {boolean} supportsRuntimeLabels
+ *   Encoder can render text labels whose content is bound to
+ *   Render Model data at open time.
  *
- * @property {boolean} supportsPerItemOffsetBinding
- *   Whether each interactive item can have its position bound to a
- *   runtime-derived value. False for ActionForm today (ADR-005).
- *
- * @property {boolean} supportsPerItemSizeBinding
- *   Whether each item's size can be runtime-bound. False for
- *   ActionForm today (assumed by extension of ADR-005; untested).
- *
- * @property {boolean} supportsImageTint
- *   Whether the encoder can tint a base texture via a color property,
- *   letting one texture serve multiple abstract colors.
+ * @property {boolean} supportsHoverTooltips
+ *   Interactive items can present a hover tooltip drawn from their
+ *   `label` field.
  *
  * @property {boolean} supportsClipping
- *   Whether items whose viewport rect exceeds the viewport are clipped
- *   cleanly. If false, the renderer must cull instead.
+ *   Items whose viewport rect exceeds the viewport are clipped
+ *   cleanly by the encoder (renderer does not need to cull).
  *
- * @property {boolean} supportsTextLabels
- *   Whether text labels can be rendered at all in this transport.
+ * @property {boolean} supportsPolygonFill
+ *   Encoder can fill an arbitrary polygon (as opposed to only
+ *   axis-aligned rectangles).
  *
- * @property {boolean} supportsHoverTooltip
- *   Whether interactive items can present a hover tooltip from their
- *   `label` field. False for ActionForm today (untested; assumed
- *   absent).
+ * ==== Capacities ====
+ *
+ * @property {number} maxWalls
+ * @property {number} maxBreakers
+ * @property {number} maxIcons
+ * @property {number} maxLabels
+ * @property {number} maxPolygons
+ *
+ * ==== Viewport ====
+ *
+ * @property {number} viewportWidthPx
+ * @property {number} viewportHeightPx
  */
 ```
 
@@ -89,8 +102,11 @@ if (walls.length > caps.maxWalls) {
   simplifyGeometry(walls, caps.maxWalls);
   model.warnings.push(`Simplified from ${walls.length} to ${caps.maxWalls} walls`);
 }
-if (!caps.supportsTextLabels) {
-  model.labels = [];
+if (caps.supportsRuntimeLabels) {
+  model.labels = buildRoomLabels(rooms);
+}
+if (!caps.supportsPolygonFill) {
+  model.polygons = [];   // renderer chose not to build any if fills won't render
 }
 ```
 
@@ -115,18 +131,31 @@ geometry against each layout's caps before rendering.
 
 ## Current implementations (planned)
 
-| Encoder | Layout | maxWalls | maxBreakers | perItemOffset | Tint |
+Values inferred from Verified Research
+[[docs/verified/research/actionform-transport-limitations.md]]:
+
+| Encoder | Layout | maxWalls | maxBreakers | supportsDynamicPositioning | supportsColorTint |
 |---|---|---|---|---|---|
-| `JsonUiEncoder` (ActionForm) | fixed pool | TBD (see below) | ~20 | **false** | untested |
-| `DebugAsciiEncoder` | none | Infinity | Infinity | n/a | n/a |
+| `JsonUiEncoder` (ActionForm) | fixed pool | TBD (Phase 2) | ~20 | **false** | untested |
+| `DebugAsciiEncoder` | none | Infinity | Infinity | true (trivially) | n/a |
 
 `maxWalls` for the ActionForm layout is empirically determined during
-Renderer Migration Plan Phase 2. The current 24×18 = 432-cell grid is
-an over-provisioned proxy pending the real slot pool.
+Renderer Migration Plan Phase 2. The current 16×12 = 192-cell grid
+after the 2026-07-24 optimization milestone is an over-provisioned
+proxy pending the real slot pool.
 
 ## Enforcement
 
 - The renderer accepts a `RendererCapabilities` argument. It never
   imports encoder or transport files.
-- The encoder's capabilities are a plain object — no methods, no state.
-  Reproducible across process boundaries.
+- The encoder's capabilities are a plain data object — no methods, no
+  hidden state. Reproducible across process boundaries.
+
+## Related
+
+- [[docs/render-model.md]] — the forward contract this reverses.
+- [[docs/adr/ADR-005-Path-A-Rejected-For-Current-Transport.md]] —
+  the first transport-scoped finding expressed as a
+  `supportsDynamicPositioning: false` in the ActionForm encoder.
+- [[docs/adr/ADR-006-Separate-Engine-From-Transport.md]] — the
+  separation this contract structurally enforces.

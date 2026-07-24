@@ -4,6 +4,7 @@ type: rejected-pattern
 status: rejected
 rejected_on: 2026-07-24
 scope: JSON-UI type: "panel" — any transport
+confidence: verified
 tags: [json-ui, panel, collection, rejected]
 ---
 

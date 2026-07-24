@@ -5,6 +5,7 @@ status: rejected-superseded
 rejected_on: 2026-07-24
 successor: Path B fixed pool (walls + breakers only, no empty background cells)
 scope: transport encoder for breaker box
+confidence: verified
 tags: [renderer, ui, grid, path-b, rejected]
 ---
 

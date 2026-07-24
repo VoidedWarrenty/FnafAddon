@@ -40,3 +40,24 @@ engine.
 Research findings feed into Rejected Patterns (when a technique is
 declared unusable for a given transport) and into ADRs (when they
 change how the engine or transport layer is scoped).
+
+## Confidence
+
+Every Verified and Rejected page carries a `confidence:` field in its
+front-matter, drawn from a four-value taxonomy:
+
+- `verified` — Reproducibly observed on device against a specific
+  engine version. Claims are bound to the tested surface.
+- `likely` — Strongly evidenced (matching community reports, cross-tool
+  observations, prior successful analogues) but not yet reproduced in
+  a first-party experiment.
+- `hypothesis` — Untested; recorded because it is worth eventually
+  probing. Never load-bearing for a shipping decision.
+- `deprecated` — Was verified against a previous engine/transport; the
+  underlying surface has moved and the claim no longer applies. Kept
+  for history; superseded by a linked replacement.
+
+Confidence lets a future discovery supersede an earlier assumption
+without deleting the history: promote the earlier page to
+`deprecated`, link the successor, and record the delta as a
+Lesson Learned.
