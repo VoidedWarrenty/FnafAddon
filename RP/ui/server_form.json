@@ -214,26 +214,28 @@
   // ================================================================
 
   //
-  // U1a — view-binding a local property, offset reads the property.
-  // (This is what shipped last time and failed. Kept for a control.)
+  // U1a — view-binding writes a computed #slot_x, offset reads it.
+  // Canvas is a stack_panel because `panel` doesn't accept
+  // collection_name (that was the JSON crash the last round).
   //
   "proof_u1a_canvas": {
-    "type": "panel",
+    "type": "stack_panel",
     "size": [ 200, 100 ],
+    "orientation": "vertical",
     "anchor_from": "center",
     "anchor_to": "center",
+    "collection_name": "form_buttons",
     "controls": [
       { "slot@server_form.proof_u1a_slot": {} }
-    ],
-    "collection_name": "form_buttons"
+    ]
   },
   "proof_u1a_slot": {
     "type": "image",
-    "size": [ 20, 20 ],
+    "size": [ 20, 4 ],
     "texture": "textures/ui/White",
     "anchor_from": "top_left",
     "anchor_to": "top_left",
-    "offset": [ "#slot_x", 40 ],
+    "offset": [ "#slot_x", 0 ],
     "bindings": [
       { "binding_type": "collection_details", "binding_collection_name": "form_buttons" },
       {
@@ -245,55 +247,64 @@
   },
 
   //
-  // U1b — property_bag with a computed expression.
+  // U1b — property_bag maps #slot_x to a computed expression.
   //
   "proof_u1b_canvas": {
-    "type": "panel",
+    "type": "stack_panel",
     "size": [ 200, 100 ],
+    "orientation": "vertical",
     "anchor_from": "center",
     "anchor_to": "center",
+    "collection_name": "form_buttons",
     "controls": [
       { "slot@server_form.proof_u1b_slot": {} }
-    ],
-    "collection_name": "form_buttons"
+    ]
   },
   "proof_u1b_slot": {
     "type": "image",
-    "size": [ 20, 20 ],
+    "size": [ 20, 4 ],
     "texture": "textures/ui/White",
     "anchor_from": "top_left",
     "anchor_to": "top_left",
     "property_bag": {
       "#slot_x": "(#collection_index * 30)"
     },
-    "offset": [ "#slot_x", 40 ],
+    "offset": [ "#slot_x", 0 ],
     "bindings": [
       { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
     ]
   },
 
   //
-  // U1c — arithmetic expression directly inside the offset array.
+  // U1c — same view-binding technique as U1a but targeting the
+  // magic `#offset_x` property directly (if Bedrock recognises that
+  // as a first-class offset override). Different target from U1a's
+  // custom `#slot_x`.
   //
   "proof_u1c_canvas": {
-    "type": "panel",
+    "type": "stack_panel",
     "size": [ 200, 100 ],
+    "orientation": "vertical",
     "anchor_from": "center",
     "anchor_to": "center",
+    "collection_name": "form_buttons",
     "controls": [
       { "slot@server_form.proof_u1c_slot": {} }
-    ],
-    "collection_name": "form_buttons"
+    ]
   },
   "proof_u1c_slot": {
     "type": "image",
-    "size": [ 20, 20 ],
+    "size": [ 20, 4 ],
     "texture": "textures/ui/White",
     "anchor_from": "top_left",
     "anchor_to": "top_left",
-    "offset": [ "(#collection_index * 30)", 40 ],
     "bindings": [
-      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" }
+      { "binding_type": "collection_details", "binding_collection_name": "form_buttons" },
+      {
+        "binding_type": "view",
+        "source_property_name": "(#collection_index * 30)",
+        "target_property_name": "#offset_x"
+      }
     ]
   },
 
