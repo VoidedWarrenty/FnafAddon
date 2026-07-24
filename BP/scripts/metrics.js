@@ -46,13 +46,15 @@ function statsFor(kind, key) {
   return { min, max, avg: sum / ring.count, count: ring.count };
 }
 
-// Wall-clock in ms via performance.now if available, else system tick
-// converted (1 tick = 50 ms). Bedrock scripts get a real performance
-// timer via `system.currentTick` and JS Date is disallowed for
-// determinism — but metrics is explicitly outside determinism.
+// Wall-clock in ms. Metrics is explicitly OUTSIDE the deterministic
+// pipeline per ADR-007 draft, so Date.now() is legal here (it's
+// forbidden inside the pipeline). Tick-based timing gave only 50 ms
+// granularity — every measurement rounded to 0 or 50 — so real
+// wall-clock is required to distinguish sub-tick operations.
+const hasDate = typeof Date !== "undefined" && typeof Date.now === "function";
 function nowMs() {
-  // Bedrock's script API exposes system.currentTick (integer 20 tps).
-  // Multiply by 50 for ms; used to avoid `Date.now()` for portability.
+  if (hasDate) return Date.now();
+  // Fallback if Date.now isn't available in this script context.
   return system.currentTick * 50;
 }
 

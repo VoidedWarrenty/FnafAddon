@@ -7,15 +7,20 @@
 export const MAP_VERSION = 3;
 
 // Grid resolution. Single tunable — everything downstream reads these.
-// 16x12 = 192 cells (== 192 buttons in the ActionForm). Optimization
-// milestone per GPT-reviewed decision 2026-07-24 — NOT the destination
-// architecture. See:
+// 24x18 = 432 cells. Bumped up from the 16x12 optimization milestone
+// (2026-07-24) after device testing showed narrow halls + small rooms
+// collapse to a single blob at 16-wide. 24x18 gives ~4x more pixels
+// per room and is proven viable on iPad. This is still an intermediate
+// value — the destination architecture is a fixed pre-positioned pool
+// of wall + breaker slots that renders no blank interactive cells.
+// See:
 //   docs/rejected/dense-raster-grid-for-panel-ui.md
 //   docs/adr/ADR-006-Separate-Engine-From-Transport.md
-// The destination is a fixed pre-positioned pool of wall + breaker
-// slots that renders no blank interactive cells.
-export const GRID_W = 16;
-export const GRID_H = 12;
+// Adaptive layout selection (server measures building bbox and picks
+// small/medium/large/xl grid at apply time) is the next follow-up
+// once RendererCapabilities exposes multiple named layouts.
+export const GRID_W = 24;
+export const GRID_H = 18;
 
 // Two cells of exterior padding around the world bbox when computing the
 // world→grid transform.

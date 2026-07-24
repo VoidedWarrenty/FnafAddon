@@ -97,17 +97,17 @@
 
   "electrical_canvas": {
     "type": "grid",
-    "size": [ 256, 192 ],
+    "size": [ 288, 216 ],
     "anchor_from": "center",
     "anchor_to": "center",
-    "grid_dimensions": [ 16, 12 ],
+    "grid_dimensions": [ 24, 18 ],
     "grid_item_template": "server_form.electrical_cell",
     "collection_name": "form_buttons"
   },
 
   "electrical_cell": {
     "type": "panel",
-    "size": [ 16, 16 ],
+    "size": [ 12, 12 ],
     "controls": [
       {
         "cell_image": {

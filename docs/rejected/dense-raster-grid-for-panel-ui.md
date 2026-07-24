@@ -46,10 +46,21 @@ The grid stays as a working baseline while the Path B encoder is
 built (parallel encoder pattern per ADR-006). Old grid deletes once
 the Path B encoder passes the Test Plan.
 
-Interim step (approved with GPT signoff):
+Intermediate resolution history:
 
-- Drop grid from 24×18 (432) to 16×12 (192) for the snappy Pizza-Plex
-  feel. Single-line change (`GRID_W` / `GRID_H` in `blueprintTypes.js`).
+- **432 buttons (24×18)** — original density that inspired the
+  rejection. Currently active; provides enough per-room detail on
+  small/medium buildings.
+- **192 buttons (16×12)** — briefly shipped 2026-07-24 as a
+  perf-first milestone; reverted after device testing showed narrow
+  halls collapsed to indistinguishable blobs. Kept in vault as
+  Lessons Learned: pixel budget × building density is bounded by
+  the number of rooms, not the button count.
+
+The **destination** is not any of these numbers — it's a fixed pool
+of wall + breaker slots where the button count is bounded by the
+number of rooms, not the raster resolution. That work happens after
+the Path B encoder lands.
 
 ## Cross-check
 
