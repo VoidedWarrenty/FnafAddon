@@ -1,0 +1,39 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "fnaf:freddy_fazbear",
+      "materials": { "default": "entity_alphatest" },
+
+      "geometry": {
+        "default": "geometry.fnaf.freddy_fazbear"
+      },
+
+      "textures": {
+        "default": "textures/entity/fnaf/bagfreddyfazbear"
+      },
+
+      "animations": {
+        "idle":    "animation.fnaf.freddy_fazbear.idle",
+        "perform": "animation.fnaf.freddy_fazbear.perform",
+        "statue":  "animation.fnaf.freddy_fazbear.statue",
+        "walk":    "animation.fnaf.freddy_fazbear.walk",
+        "chase":   "animation.fnaf.freddy_fazbear.chase",
+        "attack":  "animation.fnaf.freddy_fazbear.attack",
+        "sit":     "animation.fnaf.freddy_fazbear.sit",
+        "state_machine": "controller.animation.fnaf.freddy_fazbear"
+      },
+
+      "scripts": {
+        "animate": ["state_machine"]
+      },
+
+      "render_controllers": ["controller.render.default"],
+
+      "spawn_egg": {
+        "base_color": "#4a2b17",
+        "overlay_color": "#f2c98d"
+      }
+    }
+  }
+}

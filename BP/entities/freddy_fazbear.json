@@ -1,0 +1,35 @@
+{
+  "format_version": "1.20.60",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "fnaf:freddy_fazbear",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "properties": {
+        "fnaf:anim": {
+          "type": "enum",
+          "values": ["idle", "perform", "statue", "walk", "chase", "attack", "sit"],
+          "default": "idle",
+          "client_sync": true
+        }
+      }
+    },
+    "component_groups": {},
+    "components": {
+      "minecraft:type_family": { "family": ["fnaf_animatronic", "mob"] },
+      "minecraft:health": { "value": 40, "max": 40 },
+      "minecraft:collision_box": { "width": 1.2, "height": 2.4 },
+      "minecraft:physics": {},
+      "minecraft:pushable": { "is_pushable": false, "is_pushable_by_piston": false },
+      "minecraft:knockback_resistance": { "value": 1.0 },
+      "minecraft:damage_sensor": {
+        "triggers": [{ "cause": "fall", "deals_damage": false }]
+      },
+      "minecraft:persistent": {},
+      "minecraft:breathable": { "total_supply": 15, "suffocate_time": 0, "breathes_air": true, "breathes_water": true },
+      "minecraft:movement": { "value": 0.0 },
+      "minecraft:navigation.walk": { "can_path_over_water": true }
+    },
+    "events": {}
+  }
+}
