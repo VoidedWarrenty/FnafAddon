@@ -9,12 +9,17 @@ Pipeline the target expects:
 
 ```
 Blueprint
-  → Geometry Engine  (rasterize → detect rooms → normalize → merge → subtract doors → bounds)
+  → Geometry Engine  (rasterize → detect rooms → normalize → merge → simplify → subtract doors → bounds)
   → Device Renderer  (this device's primitives — walls, breakers, labels, icons)
-  → Render Model     (UI-agnostic geometry primitives)
-  → UI Encoder       (consumes a RendererCapabilities contract; emits transport)
+  → Render Model     (UI-agnostic geometry primitives — docs/render-model.md)
+  → UI Encoder       (consumes RendererCapabilities — docs/renderer-capabilities.md — emits transport)
   → JSON UI (server_form) OR future backends (DDUI, editor preview, web)
 ```
+
+Simplify is a dedicated stage inserted per GPT review (2026-07-24) —
+holds duplicate removal, tiny-segment removal, redundant-vertex removal,
+and future geometry optimizations, so Merge stays narrowly focused on
+collinear coalescence.
 
 The Render Model is its own subsystem — not a byproduct of `mapPipeline`.
 Full type shapes (RenderWall, RenderBreaker, RenderLabel, RenderIcon,

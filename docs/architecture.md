@@ -2,6 +2,12 @@
 
 Approved architecture as of Phase 0.
 
+Anchoring decisions and contracts:
+- ADR-006 · [Separate Engine from Transport](./adr/ADR-006-Separate-Engine-From-Transport.md) — the load-bearing decision this document formalizes
+- ADR-005 · [Path A Rejected For Current Transport](./adr/ADR-005-Path-A-Rejected-For-Current-Transport.md) — first transport-scoped rejection; the reason capabilities matter
+- Contract · [Render Model](./render-model.md) — transport-agnostic geometry primitives
+- Contract · [RendererCapabilities](./renderer-capabilities.md) — how transport constraints reach the renderer without leaking upward
+
 ## Five-layer pipeline
 
 ```
@@ -48,15 +54,18 @@ Never reads or writes device state (breakers, cameras, alarms).
 Pure math on the blueprint. Produces normalized, deduplicated,
 merge-ready primitives.
 
-Owns:
-- Raster (for room detection only)
-- Room detection (flood fill, exterior discard)
-- Wall normalization (segments in a canonical form)
-- Collinear merge (touching + overlapping segments coalesce)
-- Doorway subtraction (display walls carve openings)
-- World bounds
-- World → UI-pixel + world → raster-cell transforms
-- Room interior points (breaker/camera placement math)
+Owns (in pipeline order):
+1. **Raster** — for room detection only, never rendered
+2. **Room detection** — flood fill, exterior discard
+3. **Wall normalization** — segments in a canonical form
+4. **Collinear merge** — touching + overlapping segments coalesce
+5. **Simplify** — duplicate removal, tiny-segment removal, redundant-vertex removal, other geometry optimization
+6. **Doorway subtraction** — display walls carve openings
+7. **World bounds**
+8. **World → UI-pixel + world → raster-cell transforms**
+9. **Room interior points** — breaker/camera placement math
+
+Simplify is the dedicated location for geometry cleanup that isn't merging — keeping Merge narrowly focused on collinear coalescence and giving future optimizations (t-junction repair, near-parallel snap, tiny-gap closure) a clear home.
 
 Never picks icons, colors, labels, or slot counts.
 
@@ -202,7 +211,7 @@ contracts.
 | Layer | Current files |
 |---|---|
 | Blueprint | `blueprint.js`, `state.js`, `rooms.js`, `blueprintItem.js`, `blueprintPicker.js`, `blueprintUi.js` (editor), `blueprintViz.js` |
-| Geometry Engine | `wallRasterizer.js`, `roomDetector.js`, `breakerPlacement.js`, `mapTransform.js` (both transforms), NEW `wallNormalizer.js`, NEW `collinearMerge.js`, NEW `doorwaySubtract.js` |
+| Geometry Engine | `wallRasterizer.js`, `roomDetector.js`, `breakerPlacement.js`, `mapTransform.js` (both transforms), NEW `wallNormalizer.js`, NEW `collinearMerge.js`, NEW `geometrySimplify.js`, NEW `doorwaySubtract.js` |
 | Device Renderer | NEW `renderers/breakerBoxRenderer.js` (and future `renderers/cameraPanelRenderer.js`, etc.) |
 | Render Model | `renderModel.js` (JSDoc typedefs + factory helpers) |
 | UI Encoder | NEW `encoders/jsonUiEncoder.js`, keep `mapDebug.js` as `DebugAsciiEncoder` |
