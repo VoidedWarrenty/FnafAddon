@@ -1,27 +1,24 @@
 import { world, system } from "@minecraft/server";
-import { ActionFormData } from "@minecraft/server-ui";
-import { ANIMATRONIC_EDITOR_PREFIX } from "./blueprintTypes.js";
 
-// Compact "Editor" panel for animatronics. The title carries the
-// FNAF|ANIM_EDITOR| prefix so RP/ui/server_form.json's anim_editor wrapper
-// matches, giving us a small floating-style panel instead of a full-screen
-// modal. Nine buttons fill a 3x3 grid in fixed order:
+// Wrench-gated NPC dialogue editor for animatronics.
 //
-//   row 1: rotation −  |  current yaw  |  rotation +
-//   row 2: anim prev   |  current anim |  anim next
-//   row 3: face-me     |  reset yaw    |  despawn
+// Flow:
+//   1. Player right-clicks an animatronic while holding fnaf:wrench.
+//   2. Because the animatronic has `minecraft:npc`, vanilla opens its
+//      dialogue automatically (first scene in BP/dialogue/*.json).
+//   3. Non-wrench right-clicks are cancelled so no dialogue appears.
+//   4. Dialogue buttons run `/scriptevent fnaf:wrench <action>`. This
+//      handler dispatches: rotate ±, anim prev/next, face-me, despawn.
 //
-// ActionForm always closes on click, so we re-open the form on every
-// action to *feel* like a persistent panel. There is one frame of flicker;
-// eliminating it entirely would require a non-modal custom UI screen
-// (previously scoped and left as future work — see the JSON-UI vault).
+// scriptevent context: sourceEntity = the NPC (Freddy). We don't reliably
+// get the initiating player, so actions that need player context (face-me)
+// find the nearest player within a small radius.
 
+const WRENCH_ID = "fnaf:wrench";
 const YAW_STEP = 15;
-const MISC_ACTIONS = ["Face me", "Reset yaw", "Despawn"];
 
 const ANIMATRONICS = {
   "fnaf:freddy_fazbear": {
-    label: "Freddy Fazbear",
     property: "fnaf:anim",
     animations: ["idle", "perform", "statue", "walk", "chase", "attack", "sit"],
   },
@@ -39,10 +36,13 @@ function setYaw(entity, yaw) {
   });
 }
 
-function facePlayer(entity, player) {
-  const p = player.location, e = entity.location;
-  const yaw = (Math.atan2(p.x - e.x, -(p.z - e.z)) * 180) / Math.PI;
-  setYaw(entity, yaw);
+function nearestPlayer(entity) {
+  const players = entity.dimension.getPlayers({
+    location: entity.location,
+    maxDistance: 8,
+    closest: 1,
+  });
+  return players[0];
 }
 
 function cycleIndex(list, current, delta) {
@@ -50,48 +50,56 @@ function cycleIndex(list, current, delta) {
   return list[(i + delta + list.length) % list.length];
 }
 
-function openEditor(player, entity, entry) {
-  const yaw = currentYaw(entity);
-  const anim = entity.getProperty(entry.property);
+function performAction(npc, action) {
+  const entry = ANIMATRONICS[npc.typeId];
+  if (!entry) return;
+  const current = npc.getProperty(entry.property);
 
-  // Put the prefix AFTER the label so the visible portion of the title bar
-  // (which truncates on the right) reads clean. The JSON-UI gate uses
-  // substring match on the prefix, so position doesn't matter.
-  const form = new ActionFormData()
-    .title(`§9Editor · §f${entry.label}     ${ANIMATRONIC_EDITOR_PREFIX}`)
-    .button("§l−")             // 0
-    .button(`§f${yaw}°`)       // 1  (display-only)
-    .button("§l+")             // 2
-    .button("§l◄")             // 3
-    .button(`§f${anim}`)       // 4  (display-only)
-    .button("§l►")             // 5
-    .button("§7Face")          // 6
-    .button("§7Reset")         // 7
-    .button("§cKill");         // 8
-
-  form.show(player).then(res => {
-    if (res.canceled) return;
-    let acted = false;
-    switch (res.selection) {
-      case 0: setYaw(entity, (yaw - YAW_STEP + 360) % 360); acted = true; break;
-      case 2: setYaw(entity, (yaw + YAW_STEP) % 360);       acted = true; break;
-      case 3: entity.setProperty(entry.property, cycleIndex(entry.animations, anim, -1)); acted = true; break;
-      case 5: entity.setProperty(entry.property, cycleIndex(entry.animations, anim, +1)); acted = true; break;
-      case 6: facePlayer(entity, player); acted = true; break;
-      case 7: setYaw(entity, 0);          acted = true; break;
-      case 8: entity.remove();            return;
-      default: break;
+  switch (action) {
+    case "rot_minus":
+      setYaw(npc, (currentYaw(npc) - YAW_STEP + 360) % 360);
+      break;
+    case "rot_plus":
+      setYaw(npc, (currentYaw(npc) + YAW_STEP) % 360);
+      break;
+    case "anim_prev":
+      npc.setProperty(entry.property, cycleIndex(entry.animations, current, -1));
+      break;
+    case "anim_next":
+      npc.setProperty(entry.property, cycleIndex(entry.animations, current, +1));
+      break;
+    case "face": {
+      const p = nearestPlayer(npc);
+      if (!p) return;
+      const pl = p.location, e = npc.location;
+      const yaw = (Math.atan2(pl.x - e.x, -(pl.z - e.z)) * 180) / Math.PI;
+      setYaw(npc, yaw);
+      break;
     }
-    if (acted) system.runTimeout(() => openEditor(player, entity, entry), 1);
-  });
+    case "kill":
+      npc.remove();
+      break;
+  }
 }
 
 export function registerAnimatronicUi() {
+  // Wrench gate: cancel any non-wrench right-click on a known animatronic
+  // so the NPC dialogue never opens without the tool.
   world.beforeEvents.playerInteractWithEntity.subscribe(ev => {
-    const entry = ANIMATRONICS[ev.target?.typeId];
-    if (!entry) return;
-    ev.cancel = true;
-    const { player, target } = ev;
-    system.run(() => openEditor(player, target, entry));
+    if (!ANIMATRONICS[ev.target?.typeId]) return;
+    if (ev.itemStack?.typeId !== WRENCH_ID) {
+      ev.cancel = true;
+    }
+    // With wrench held, we let the interaction through — vanilla NPC
+    // dialogue opens with the first scene from the entity's dialogue file.
+  });
+
+  // Dialogue-button dispatch: dialogue commands run `/scriptevent fnaf:wrench <action>`
+  // with the NPC as sourceEntity.
+  system.afterEvents.scriptEventReceive.subscribe(ev => {
+    if (ev.id !== "fnaf:wrench") return;
+    const npc = ev.sourceEntity;
+    if (!npc || !ANIMATRONICS[npc.typeId]) return;
+    performAction(npc, ev.message.trim());
   });
 }

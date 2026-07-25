@@ -16,6 +16,7 @@
     },
     "component_groups": {},
     "components": {
+      "minecraft:npc": {},
       "minecraft:type_family": { "family": ["fnaf_animatronic", "mob"] },
       "minecraft:health": { "value": 40, "max": 40 },
       "minecraft:collision_box": { "width": 1.2, "height": 2.4 },

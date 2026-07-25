@@ -1,0 +1,40 @@
+{
+  "format_version": "1.17.0",
+  "minecraft:npc_dialogue": {
+    "scenes": [
+      {
+        "scene_tag": "editor",
+        "npc_name": { "rawtext": [ { "text": "Freddy Fazbear" } ] },
+        "text": { "rawtext": [ { "text": "§7Employee-only editor\n§8Wrench required to open." } ] },
+        "on_open_commands": [],
+        "on_close_commands": [],
+        "buttons": [
+          {
+            "name": "§7Rotate ◄",
+            "commands": [ "/scriptevent fnaf:wrench rot_minus" ]
+          },
+          {
+            "name": "§7Rotate ►",
+            "commands": [ "/scriptevent fnaf:wrench rot_plus" ]
+          },
+          {
+            "name": "§7Anim ◄",
+            "commands": [ "/scriptevent fnaf:wrench anim_prev" ]
+          },
+          {
+            "name": "§7Anim ►",
+            "commands": [ "/scriptevent fnaf:wrench anim_next" ]
+          },
+          {
+            "name": "§bFace me",
+            "commands": [ "/scriptevent fnaf:wrench face" ]
+          },
+          {
+            "name": "§cDespawn",
+            "commands": [ "/scriptevent fnaf:wrench kill" ]
+          }
+        ]
+      }
+    ]
+  }
+}

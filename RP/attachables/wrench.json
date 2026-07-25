@@ -3,9 +3,15 @@
   "minecraft:attachable": {
     "description": {
       "identifier": "fnaf:wrench",
-      "materials": { "default": "entity_alphatest" },
-      "textures":  { "default": "textures/items/fnaf/wrench" },
-      "geometry":  { "default": "geometry.fnaf.wrench" },
+      "materials": {
+        "default":   "entity_alphatest",
+        "enchanted": "entity_alphatest_glint"
+      },
+      "textures": {
+        "default":   "textures/items/fnaf/wrench",
+        "enchanted": "textures/misc/enchanted_item_glint"
+      },
+      "geometry": { "default": "geometry.fnaf.wrench" },
       "scripts": {
         "pre_animation": [
           "v.tcos0 = (math.cos(q.anim_time * 38.17) * q.body_x_rotation) / 3.0;"
