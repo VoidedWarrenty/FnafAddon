@@ -42,17 +42,18 @@ function openEditor(player, entity, entry) {
   const yaw = currentYaw(entity);
   const anim = entity.getProperty(entry.property);
 
+  const ICON = "textures/items/fnaf/";
   const form = new ActionFormData()
     .title(`§9Editor · §f${entry.label}     ${ANIMATRONIC_EDITOR_PREFIX}`)
-    .button("§l−")            // 0
-    .button(`§f${yaw}°`)      // 1 display-only
-    .button("§l+")            // 2
-    .button("§l◄")            // 3
-    .button(`§f${anim}`)      // 4 display-only
-    .button("§l►")            // 5
-    .button("§7Face")         // 6
-    .button("§7Reset")        // 7
-    .button("§cKill");        // 8
+    .button("",             ICON + "ui_minus")   // 0
+    .button(`§f${yaw}°`)                          // 1 display-only
+    .button("",             ICON + "ui_plus")    // 2
+    .button("",             ICON + "ui_larr")    // 3
+    .button(`§f${anim}`)                          // 4 display-only
+    .button("",             ICON + "ui_rarr")    // 5
+    .button("",             ICON + "ui_face")    // 6
+    .button("",             ICON + "ui_reset")   // 7
+    .button("",             ICON + "ui_kill");   // 8
 
   form.show(player).then(res => {
     if (res.canceled) return;
