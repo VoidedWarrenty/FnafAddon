@@ -6,7 +6,7 @@
     "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c1001",
     "version": [
       0,
-      2,
+      3,
       0
     ],
     "min_engine_version": [
@@ -21,7 +21,7 @@
       "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c1002",
       "version": [
         0,
-        2,
+        3,
         0
       ]
     },
@@ -32,7 +32,7 @@
       "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c1003",
       "version": [
         0,
-        2,
+        3,
         0
       ]
     }
@@ -42,7 +42,7 @@
       "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c2001",
       "version": [
         0,
-        2,
+        3,
         0
       ]
     },

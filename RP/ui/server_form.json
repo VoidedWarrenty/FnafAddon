@@ -153,6 +153,14 @@
     ]
   },
 
+  //
+  // Reuse the same cell chrome pattern the U8 proof verified: an image bg
+  // via textures/ui/White (with collection_details for click routing) plus
+  // a text-bearing button using #form_button_text -> #label. That override
+  // is the one Bedrock actually populates for ActionForm buttons — plain
+  // label + #text binding did not. Text lives on the button itself, not a
+  // sibling label.
+  //
   "anim_editor_cell": {
     "type": "panel",
     "size": [ 52, 30 ],
@@ -164,34 +172,30 @@
           "layer": 1,
           "texture": "textures/ui/White",
           "color": [ 0.18, 0.18, 0.20 ],
-          "alpha": 0.85
-        }
-      },
-      {
-        "cell_label": {
-          "type": "label",
-          "size": [ "100% - 4px", "100% - 4px" ],
-          "layer": 2,
-          "text_alignment": "center",
-          "color": [ 1, 1, 1 ],
-          "shadow": true,
+          "alpha": 0.85,
           "bindings": [
             {
-              "binding_name": "#form_button_text",
-              "binding_name_override": "#text",
-              "binding_type": "collection",
+              "binding_type": "collection_details",
               "binding_collection_name": "form_buttons"
             }
           ]
         }
       },
       {
-        "cell_hitbox": {
-          "type": "button",
+        "cell_button@common_buttons.light_text_button": {
           "size": [ "100%", "100%" ],
-          "layer": 3,
+          "layer": 2,
           "$pressed_button_name": "button.form_button_click",
+          "$button_text": "#form_button_text",
+          "$button_text_binding_type": "collection",
+          "$button_text_grid_collection_name": "form_buttons",
           "bindings": [
+            {
+              "binding_name": "#form_button_text",
+              "binding_name_override": "#label",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            },
             {
               "binding_type": "collection_details",
               "binding_collection_name": "form_buttons"
