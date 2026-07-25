@@ -133,16 +133,28 @@
   // pattern; buttons self-label instead (e.g. "◄" / "Idle" / "►").
   //
   "anim_editor_canvas": {
-    "type": "panel",
+    "type": "stack_panel",
+    "orientation": "vertical",
     "size": [ "100% - 8px", "100% - 22px" ],
     "anchor_from": "top_middle",
     "anchor_to": "top_middle",
     "offset": [ 0, 4 ],
     "controls": [
       {
+        "section_hint": {
+          "type": "label",
+          "size": [ "100%", 10 ],
+          "text": "§7Rotation §8· §7Animation §8· §7Misc",
+          "text_alignment": "center",
+          "color": [ 0.8, 0.8, 0.85 ],
+          "shadow": true
+        }
+      },
+      { "spacer_top": { "type": "panel", "size": [ "100%", 4 ] } },
+      {
         "grid_wrap": {
           "type": "grid",
-          "size": [ 156, 90 ],
+          "size": [ 156, 96 ],
           "anchor_from": "center",
           "anchor_to": "center",
           "grid_dimensions": [ 3, 3 ],
@@ -161,30 +173,54 @@
   // label + #text binding did not. Text lives on the button itself, not a
   // sibling label.
   //
+  //
+  // Cell chrome (3 image layers + button):
+  //   1. Outer border tint (light)
+  //   2. Inner dark fill (creates 1px bordered slot look)
+  //   3. Highlight strip along the top for subtle depth
+  //   Then the interactive text button on top.
+  //
   "anim_editor_cell": {
     "type": "panel",
     "size": [ 52, 30 ],
     "controls": [
       {
-        "cell_bg": {
+        "cell_border": {
           "type": "image",
           "size": [ "100% - 2px", "100% - 2px" ],
           "layer": 1,
           "texture": "textures/ui/White",
-          "color": [ 0.18, 0.18, 0.20 ],
-          "alpha": 0.85,
-          "bindings": [
-            {
-              "binding_type": "collection_details",
-              "binding_collection_name": "form_buttons"
-            }
-          ]
+          "color": [ 0.55, 0.55, 0.60 ],
+          "alpha": 0.9
+        }
+      },
+      {
+        "cell_fill": {
+          "type": "image",
+          "size": [ "100% - 4px", "100% - 4px" ],
+          "layer": 2,
+          "texture": "textures/ui/White",
+          "color": [ 0.14, 0.14, 0.16 ],
+          "alpha": 0.95
+        }
+      },
+      {
+        "cell_top_hi": {
+          "type": "image",
+          "size": [ "100% - 6px", 1 ],
+          "layer": 3,
+          "anchor_from": "top_middle",
+          "anchor_to":   "top_middle",
+          "offset": [ 0, 2 ],
+          "texture": "textures/ui/White",
+          "color": [ 0.75, 0.75, 0.80 ],
+          "alpha": 0.5
         }
       },
       {
         "cell_button@common_buttons.light_text_button": {
           "size": [ "100%", "100%" ],
-          "layer": 2,
+          "layer": 4,
           "$pressed_button_name": "button.form_button_click",
           "$button_text": "#form_button_text",
           "$button_text_binding_type": "collection",

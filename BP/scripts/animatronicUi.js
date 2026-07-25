@@ -1,24 +1,21 @@
 import { world, system } from "@minecraft/server";
+import { ActionFormData } from "@minecraft/server-ui";
+import { ANIMATRONIC_EDITOR_PREFIX } from "./blueprintTypes.js";
 
-// Wrench-gated NPC dialogue editor for animatronics.
+// Wrench-gated JSON-UI editor for animatronics. Right-click with wrench in
+// hand opens the compact 3x3 panel (rendered by RP/ui/server_form.json's
+// anim_editor_long_form wrapper). Right-click without wrench does nothing.
 //
-// Flow:
-//   1. Player right-clicks an animatronic while holding fnaf:wrench.
-//   2. Because the animatronic has `minecraft:npc`, vanilla opens its
-//      dialogue automatically (first scene in BP/dialogue/*.json).
-//   3. Non-wrench right-clicks are cancelled so no dialogue appears.
-//   4. Dialogue buttons run `/scriptevent fnaf:wrench <action>`. This
-//      handler dispatches: rotate ±, anim prev/next, face-me, despawn.
-//
-// scriptevent context: sourceEntity = the NPC (Freddy). We don't reliably
-// get the initiating player, so actions that need player context (face-me)
-// find the nearest player within a small radius.
+// The panel closes on each click; the handler re-opens it after applying
+// the action so it *feels* persistent (one-frame flicker).
 
 const WRENCH_ID = "fnaf:wrench";
 const YAW_STEP = 15;
+const MISC_ACTIONS = ["Face me", "Reset yaw", "Despawn"];
 
 const ANIMATRONICS = {
   "fnaf:freddy_fazbear": {
+    label: "Freddy Fazbear",
     property: "fnaf:anim",
     animations: ["idle", "perform", "statue", "walk", "chase", "attack", "sit"],
   },
@@ -36,70 +33,57 @@ function setYaw(entity, yaw) {
   });
 }
 
-function nearestPlayer(entity) {
-  const players = entity.dimension.getPlayers({
-    location: entity.location,
-    maxDistance: 8,
-    closest: 1,
-  });
-  return players[0];
-}
-
 function cycleIndex(list, current, delta) {
   const i = Math.max(0, list.indexOf(current));
   return list[(i + delta + list.length) % list.length];
 }
 
-function performAction(npc, action) {
-  const entry = ANIMATRONICS[npc.typeId];
-  if (!entry) return;
-  const current = npc.getProperty(entry.property);
+function openEditor(player, entity, entry) {
+  const yaw = currentYaw(entity);
+  const anim = entity.getProperty(entry.property);
 
-  switch (action) {
-    case "rot_minus":
-      setYaw(npc, (currentYaw(npc) - YAW_STEP + 360) % 360);
-      break;
-    case "rot_plus":
-      setYaw(npc, (currentYaw(npc) + YAW_STEP) % 360);
-      break;
-    case "anim_prev":
-      npc.setProperty(entry.property, cycleIndex(entry.animations, current, -1));
-      break;
-    case "anim_next":
-      npc.setProperty(entry.property, cycleIndex(entry.animations, current, +1));
-      break;
-    case "face": {
-      const p = nearestPlayer(npc);
-      if (!p) return;
-      const pl = p.location, e = npc.location;
-      const yaw = (Math.atan2(pl.x - e.x, -(pl.z - e.z)) * 180) / Math.PI;
-      setYaw(npc, yaw);
-      break;
+  const form = new ActionFormData()
+    .title(`§9Editor · §f${entry.label}     ${ANIMATRONIC_EDITOR_PREFIX}`)
+    .button("§l−")            // 0
+    .button(`§f${yaw}°`)      // 1 display-only
+    .button("§l+")            // 2
+    .button("§l◄")            // 3
+    .button(`§f${anim}`)      // 4 display-only
+    .button("§l►")            // 5
+    .button("§7Face")         // 6
+    .button("§7Reset")        // 7
+    .button("§cKill");        // 8
+
+  form.show(player).then(res => {
+    if (res.canceled) return;
+    let acted = false;
+    switch (res.selection) {
+      case 0: setYaw(entity, (yaw - YAW_STEP + 360) % 360); acted = true; break;
+      case 2: setYaw(entity, (yaw + YAW_STEP) % 360);       acted = true; break;
+      case 3: entity.setProperty(entry.property, cycleIndex(entry.animations, anim, -1)); acted = true; break;
+      case 5: entity.setProperty(entry.property, cycleIndex(entry.animations, anim, +1)); acted = true; break;
+      case 6: {
+        const p = player.location, e = entity.location;
+        const yawToPlayer = (Math.atan2(p.x - e.x, -(p.z - e.z)) * 180) / Math.PI;
+        setYaw(entity, yawToPlayer);
+        acted = true; break;
+      }
+      case 7: setYaw(entity, 0); acted = true; break;
+      case 8: entity.remove(); return;
+      default: break;
     }
-    case "kill":
-      npc.remove();
-      break;
-  }
+    if (acted) system.runTimeout(() => openEditor(player, entity, entry), 1);
+  });
 }
 
 export function registerAnimatronicUi() {
-  // Wrench gate: cancel any non-wrench right-click on a known animatronic
-  // so the NPC dialogue never opens without the tool.
   world.beforeEvents.playerInteractWithEntity.subscribe(ev => {
-    if (!ANIMATRONICS[ev.target?.typeId]) return;
-    if (ev.itemStack?.typeId !== WRENCH_ID) {
-      ev.cancel = true;
-    }
-    // With wrench held, we let the interaction through — vanilla NPC
-    // dialogue opens with the first scene from the entity's dialogue file.
-  });
-
-  // Dialogue-button dispatch: dialogue commands run `/scriptevent fnaf:wrench <action>`
-  // with the NPC as sourceEntity.
-  system.afterEvents.scriptEventReceive.subscribe(ev => {
-    if (ev.id !== "fnaf:wrench") return;
-    const npc = ev.sourceEntity;
-    if (!npc || !ANIMATRONICS[npc.typeId]) return;
-    performAction(npc, ev.message.trim());
+    const entry = ANIMATRONICS[ev.target?.typeId];
+    if (!entry) return;
+    // Wrench required — no wrench, no editor.
+    if (ev.itemStack?.typeId !== WRENCH_ID) return;
+    ev.cancel = true;
+    const { player, target } = ev;
+    system.run(() => openEditor(player, target, entry));
   });
 }

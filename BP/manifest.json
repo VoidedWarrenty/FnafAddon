@@ -1,13 +1,13 @@
 {
   "format_version": 2,
   "header": {
-    "name": "FNAF Addon v0.2.6 (Behavior)",
-    "description": "Five Nights at Freddy's addon behavior pack. v0.2.6",
+    "name": "FNAF Addon v0.2.7 (Behavior)",
+    "description": "Five Nights at Freddy's addon behavior pack. v0.2.7",
     "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c1001",
     "version": [
       0,
       2,
-      6
+      7
     ],
     "min_engine_version": [
       1,
@@ -22,7 +22,7 @@
       "version": [
         0,
         2,
-        6
+        7
       ]
     },
     {
@@ -33,7 +33,7 @@
       "version": [
         0,
         2,
-        6
+        7
       ]
     }
   ],
@@ -43,7 +43,7 @@
       "version": [
         0,
         2,
-        6
+        7
       ]
     },
     {
