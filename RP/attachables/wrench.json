@@ -1,0 +1,12 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:attachable": {
+    "description": {
+      "identifier": "fnaf:wrench",
+      "materials": { "default": "entity_alphatest_one_sided" },
+      "textures": { "default": "textures/items/fnaf/wrench" },
+      "geometry":  { "default": "geometry.fnaf.wrench" },
+      "render_controllers": [ "controller.render.wrench" ]
+    }
+  }
+}
