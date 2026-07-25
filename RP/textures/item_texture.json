@@ -10,6 +10,9 @@
     },
     "fnaf_spawn_egg_freddy_fazbear": {
       "textures": "textures/items/fnaf/spawn_egg_freddy_fazbear"
+    },
+    "fnaf_wrench": {
+      "textures": "textures/items/fnaf/wrench"
     }
   }
 }
