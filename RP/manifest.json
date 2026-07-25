@@ -1,13 +1,13 @@
 {
   "format_version": 2,
   "header": {
-    "name": "pack.name",
-    "description": "pack.description",
+    "name": "FNAF Addon v0.2.4 (Resources)",
+    "description": "Five Nights at Freddy's addon resources pack. v0.2.4",
     "uuid": "a3b3f3e2-1c4d-4c8f-8c2f-1e5f5a1c2001",
     "version": [
       0,
       2,
-      3
+      4
     ],
     "min_engine_version": [
       1,
@@ -22,7 +22,7 @@
       "version": [
         0,
         2,
-        3
+        4
       ]
     }
   ],
@@ -32,7 +32,7 @@
       "version": [
         0,
         2,
-        3
+        4
       ]
     }
   ]
