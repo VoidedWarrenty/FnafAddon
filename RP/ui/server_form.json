@@ -147,10 +147,11 @@
         "section_hint": {
           "type": "label",
           "size": [ "100%", 10 ],
-          "text": "§7Rotation §8· §7Animation §8· §7Misc",
+          "text": "§7Rot §8· §7Anim §8· §7Misc",
           "text_alignment": "center",
           "color": [ 0.8, 0.8, 0.85 ],
-          "shadow": true
+          "shadow": true,
+          "font_scale_factor": 0.9
         }
       },
       { "spacer_top": { "type": "panel", "size": [ "100%", 4 ] } },
@@ -221,10 +222,38 @@
         }
       },
       {
+        "cell_icon": {
+          "type": "image",
+          "size": [ 20, 20 ],
+          "layer": 4,
+          "anchor_from": "center",
+          "anchor_to":   "center",
+          "bindings": [
+            {
+              "binding_name": "#form_button_texture",
+              "binding_name_override": "#texture",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            },
+            {
+              "binding_name": "#form_button_texture_file_system",
+              "binding_name_override": "#texture_file_system",
+              "binding_type": "collection",
+              "binding_collection_name": "form_buttons"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not ((#texture = '') or (#texture = 'loading')))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
         "cell_text": {
           "type": "label",
           "size": [ "100% - 6px", "100% - 6px" ],
-          "layer": 4,
+          "layer": 5,
           "anchor_from": "center",
           "anchor_to":   "center",
           "text_alignment": "center",
@@ -245,7 +274,7 @@
         "cell_hitbox": {
           "type": "button",
           "size": [ "100%", "100%" ],
-          "layer": 5,
+          "layer": 6,
           "$pressed_button_name": "button.form_button_click",
           "bindings": [
             {
