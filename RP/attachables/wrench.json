@@ -1,5 +1,5 @@
 {
-  "format_version": "1.8.0",
+  "format_version": "1.16.0",
   "minecraft:attachable": {
     "description": {
       "identifier": "fnaf:wrench",
@@ -14,6 +14,38 @@
       "geometry": {
         "default": "geometry.fnaf.wrench"
       },
+      "item_display_transforms": {
+        "thirdperson_righthand": {
+          "rotation":    [0, -90, 0],
+          "translation": [0, 2.5, 0.75]
+        },
+        "thirdperson_lefthand": {
+          "rotation":    [0, 90, 0],
+          "translation": [0, 2.5, 0.75]
+        },
+        "firstperson_righthand": {
+          "rotation":    [-3, -52, 14],
+          "translation": [2.5, 3.25, -0.5]
+        },
+        "firstperson_lefthand": {
+          "rotation":    [-3, -52, 14],
+          "translation": [2.5, 3.25, -0.5]
+        },
+        "ground": {
+          "translation": [0, 2.75, 0],
+          "scale":       [0.75, 0.75, 0.75]
+        },
+        "gui": {
+          "rotation":    [-10, -25, -45],
+          "translation": [0, -0.25, 0],
+          "scale":       [0.95, 0.95, 0.95]
+        },
+        "fixed": {
+          "rotation":    [0, -180, 0],
+          "translation": [0, -1.75, -2.5],
+          "scale":       [1.71, 1.71, 1.71]
+        }
+      },
       "scripts": {
         "pre_animation": [
           "v.tcos0 = (math.cos(q.anim_time * 38.17) * q.body_x_rotation) / 3.0;"
@@ -24,9 +56,7 @@
         "wield_first_person": "animation.item.wield_first_person",
         "wield_third_person": "animation.item.wield_third_person"
       },
-      "render_controllers": [
-        "controller.render.item_default"
-      ]
+      "render_controllers": [ "controller.render.item_default" ]
     }
   }
 }
