@@ -250,33 +250,21 @@
         }
       },
       {
-        "cell_text": {
-          "type": "label",
-          "size": [ "100% - 6px", "100% - 6px" ],
+        "cell_button@common_buttons.light_text_button": {
+          "size": [ "100%", "100%" ],
           "layer": 5,
-          "anchor_from": "center",
-          "anchor_to":   "center",
-          "text_alignment": "center",
-          "color": [ 1, 1, 1 ],
-          "shadow": true,
-          "font_scale_factor": 1.0,
+          "$pressed_button_name": "button.form_button_click",
+          "$button_text": "#form_button_text",
+          "$button_text_binding_type": "collection",
+          "$button_text_grid_collection_name": "form_buttons",
+          "alpha": 0.35,
           "bindings": [
             {
               "binding_name": "#form_button_text",
-              "binding_name_override": "#text",
+              "binding_name_override": "#label",
               "binding_type": "collection",
               "binding_collection_name": "form_buttons"
-            }
-          ]
-        }
-      },
-      {
-        "cell_hitbox": {
-          "type": "button",
-          "size": [ "100%", "100%" ],
-          "layer": 6,
-          "$pressed_button_name": "button.form_button_click",
-          "bindings": [
+            },
             {
               "binding_type": "collection_details",
               "binding_collection_name": "form_buttons"

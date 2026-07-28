@@ -10,7 +10,19 @@
       "minecraft:display_name": { "value": "Employee Wrench" },
       "minecraft:max_stack_size": 1,
       "minecraft:hand_equipped": true,
-      "minecraft:should_despawn": false
+      "minecraft:should_despawn": false,
+      "minecraft:render_offsets": {
+        "main_hand": {
+          "first_person": {
+            "translation": [ 0.156,  0.203, -0.031 ],
+            "rotation":    [ -3,    -52,    14     ]
+          },
+          "third_person": {
+            "translation": [ 0,      0.156,  0.047 ],
+            "rotation":    [ 0,     -90,     0     ]
+          }
+        }
+      }
     }
   }
 }
